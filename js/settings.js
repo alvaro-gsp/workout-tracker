@@ -31,7 +31,6 @@ const Settings = {
         <h3>Datos</h3>
         <div class="btn-group">
           <button class="btn btn-secondary btn-small" id="export-all-json">Exportar JSON</button>
-          <button class="btn btn-secondary btn-small" id="export-all-csv">Exportar CSV</button>
         </div>
         <div style="margin-top:12px">
           <button class="btn btn-danger btn-small" id="clear-data">Borrar todos mis datos</button>
@@ -43,7 +42,7 @@ const Settings = {
         <p style="font-size:0.85rem;color:var(--text-dim);margin-bottom:8px">Resumen de tu rutina actual:</p>
         ${Object.values(ROUTINE).map(day => `
           <div class="card">
-            <div class="card-title">${day.name} — ${day.subtitle} (${day.weekday})</div>
+            <div class="card-title">${day.name} — ${day.subtitle}</div>
             ${day.exercises.map(ex => `
               <div style="font-size:0.85rem;padding:3px 0">
                 ${ex.name} — ${ex.sets}x${ex.repsTarget}
@@ -105,13 +104,11 @@ const Settings = {
 
     document.getElementById('export-all-json')?.addEventListener('click', () => {
       const data = Store.exportData();
-      History._download(JSON.stringify(data, null, 2), `workout-export-${new Date().toISOString().slice(0,10)}.json`, 'application/json');
+      const users = Store.getUsers();
+      const user = users.find(u => u.id === Store.getCurrentUser());
+      History._download(JSON.stringify(data, null, 2), `workout-tracker-${user?.name || 'data'}-${new Date().toISOString().slice(0,10)}.json`, 'application/json');
     });
 
-    document.getElementById('export-all-csv')?.addEventListener('click', () => {
-      const csv = Store.exportCSV();
-      History._download(csv, `workout-export-${new Date().toISOString().slice(0,10)}.csv`, 'text/csv');
-    });
 
     document.getElementById('clear-data')?.addEventListener('click', () => {
       UI.showModal(`

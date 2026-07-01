@@ -7,6 +7,7 @@ const ROUTINE = {
       {
         id: 'zancada_estatica',
         name: 'Zancada estatica',
+        unilateral: true,
         sets: 4,
         repsTarget: '6-8 cada pierna',
         rest: 120,
@@ -25,6 +26,7 @@ const ROUTINE = {
       {
         id: 'peso_muerto_rumano_1p',
         name: 'Peso muerto rumano a 1 pierna',
+        unilateral: true,
         sets: 4,
         repsTarget: '8-10 cada pierna',
         rest: 90,
@@ -34,6 +36,7 @@ const ROUTINE = {
       {
         id: 'remo_1_mano',
         name: 'Remo a una mano',
+        unilateral: true,
         sets: 4,
         repsTarget: '8-10 cada brazo',
         rest: 90,
@@ -52,6 +55,7 @@ const ROUTINE = {
       {
         id: 'plancha_a',
         name: 'Plancha abdominal',
+        unit: 'seconds',
         sets: 3,
         repsTarget: '45-60s',
         rest: 60,
@@ -81,11 +85,23 @@ const ROUTINE = {
         repsTarget: '8-12',
         rest: 90,
         material: '15 kg cada mano + banda loop por espalda',
-        notes: 'Tumbado en suelo, codos tocan suelo abajo. Empujar arriba explosivo.'
+        notes: 'Tumbado en suelo, codos tocan suelo abajo. Empujar arriba explosivo.',
+        alternatives: [
+          {
+            id: 'flexiones',
+            name: 'Flexiones',
+            sets: 4,
+            repsTarget: 'max',
+            rest: 90,
+            material: 'Peso corporal',
+            notes: 'Manos a anchura de hombros. Bajar pecho al suelo, subir explosivo. Para mas dificultad: banda elastica por la espalda o chaleco/disco lastrado.'
+          }
+        ]
       },
       {
         id: 'zancada_inversa',
         name: 'Zancada inversa',
+        unilateral: true,
         sets: 4,
         repsTarget: '8-10 cada pierna',
         rest: 90,
@@ -94,12 +110,12 @@ const ROUTINE = {
       },
       {
         id: 'flexiones_elevadas',
-        name: 'Flexiones pies elevados + banda',
+        name: 'Flexiones declinadas',
         sets: 4,
         repsTarget: 'max',
         rest: 90,
-        material: 'Pies en banquito + banda loop por espalda',
-        notes: 'Pies en banquito, banda por la espalda. Bajar pecho al suelo, subir explosivo.'
+        material: 'Pies elevados',
+        notes: 'Pies elevados. Bajar pecho al suelo, subir explosivo.'
       },
       {
         id: 'press_hombro',
@@ -147,6 +163,7 @@ const ROUTINE = {
       {
         id: 'zancada_estatica_c',
         name: 'Zancada estatica',
+        unilateral: true,
         sets: 3,
         repsTarget: '8-10 cada pierna',
         rest: 90,

@@ -91,7 +91,7 @@ const Progress = {
           return vol > bestVol ? s : best;
         }, { reps: 0, weight: 0 });
 
-        const totalReps = ex.sets.reduce((acc, s) => acc + (s.reps || 0), 0);
+        const totalReps = ex.sets.reduce((acc, s) => acc + (s.reps || 0) + (s.repsL || 0) + (s.repsR || 0), 0);
 
         exerciseMap[ex.id].entries.push({
           date: log.date,
