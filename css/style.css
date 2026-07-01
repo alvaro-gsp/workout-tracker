@@ -113,6 +113,29 @@ nav#main-nav {
   font-weight: 600;
   font-size: 0.95rem;
   margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.suggestion-btn {
+  background: none;
+  border: 1.5px solid var(--warning);
+  color: var(--warning);
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+
+.suggestion-btn:hover {
+  background: rgba(255, 167, 38, 0.15);
+  transform: scale(1.1);
 }
 
 .exercise-target {

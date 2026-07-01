@@ -15,7 +15,6 @@ const History = {
 
     let html = `<div class="btn-group" style="margin-bottom:16px">
       <button class="btn btn-secondary btn-small" id="export-json">Exportar JSON</button>
-      <button class="btn btn-secondary btn-small" id="export-csv">Exportar CSV</button>
     </div>`;
 
     let currentWeek = null;
@@ -41,10 +40,15 @@ const History = {
           const feelingEmojis = { great: '💪', good: '🙂', meh: '😐', hard: '😫', dying: '🤯' };
 
           const setsText = ex.sets
-            ?.filter(s => s.reps !== null || s.skipped)
+            ?.filter(s => s.reps !== null || s.repsL !== null || s.skipped)
             .map(s => {
               if (s.skipped) return '✗';
-              let t = `${s.reps}`;
+              let t;
+              if (s.repsL != null || s.repsR != null) {
+                t = `L${s.repsL || 0}/R${s.repsR || 0}`;
+              } else {
+                t = `${s.reps}`;
+              }
               if (s.weight) t += `x${s.weight}kg`;
               if (s.feeling) t += feelingEmojis[s.feeling] || '';
               return t;
@@ -88,15 +92,9 @@ const History = {
 
     document.getElementById('export-json')?.addEventListener('click', () => {
       const data = Store.exportData();
-      this._download(JSON.stringify(data, null, 2), `workout-${data.user}-${new Date().toISOString().slice(0,10)}.json`, 'application/json');
+      this._download(JSON.stringify(data, null, 2), `workout-tracker-${data.user}-${new Date().toISOString().slice(0,10)}.json`, 'application/json');
     });
 
-    document.getElementById('export-csv')?.addEventListener('click', () => {
-      const csv = Store.exportCSV();
-      const users = Store.getUsers();
-      const user = users.find(u => u.id === Store.getCurrentUser());
-      this._download(csv, `workout-${user?.name || 'data'}-${new Date().toISOString().slice(0,10)}.csv`, 'text/csv');
-    });
   },
 
   _download(content, filename, mimeType) {

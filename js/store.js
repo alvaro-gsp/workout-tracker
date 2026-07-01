@@ -112,41 +112,5 @@ const Store = {
       totalWorkouts: logs.length,
       logs: logs
     };
-  },
-
-  exportCSV() {
-    const logs = this.getWorkoutLogs();
-    if (!logs.length) return '';
-
-    const rows = [['Fecha', 'Semana', 'Dia', 'Ejercicio', 'Serie', 'Reps', 'Peso (kg)', 'Skipped', 'Sensacion', 'Notas'].join(';')];
-
-    logs.forEach(log => {
-      const day = ROUTINE[log.dayId];
-      if (!day || !log.exercises) return;
-
-      log.exercises.forEach(ex => {
-        const exDef = day.exercises.find(e => e.id === ex.id);
-        const exName = exDef ? exDef.name : ex.id;
-
-        if (ex.sets) {
-          ex.sets.forEach((set, i) => {
-            rows.push([
-              log.date,
-              log.week,
-              day.name,
-              exName,
-              i + 1,
-              set.reps || '',
-              set.weight || '',
-              set.skipped ? 'SI' : '',
-              set.feeling || '',
-              (ex.notes || '').replace(/;/g, ',').replace(/\n/g, ' ')
-            ].join(';'));
-          });
-        }
-      });
-    });
-
-    return rows.join('\n');
   }
 };
