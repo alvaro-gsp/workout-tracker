@@ -150,6 +150,30 @@ nav#main-nav {
   margin-bottom: 10px;
 }
 
+.exercise-goal {
+  margin-top: 6px;
+  margin-bottom: 4px;
+}
+
+.goal-line {
+  font-size: 0.72rem;
+  padding: 1px 0;
+}
+
+.goal-active {
+  color: var(--success);
+  font-weight: 600;
+}
+
+.goal-dim {
+  color: var(--text-dim);
+}
+
+.goal-first {
+  color: var(--warning);
+  font-style: italic;
+}
+
 .set-row {
   display: flex;
   align-items: center;
@@ -185,6 +209,11 @@ nav#main-nav {
   min-width: 40px;
   flex-shrink: 1;
   padding: 6px 4px;
+}
+
+.set-grid-v2.unilateral .set-input-small {
+  width: 42px;
+  min-width: 35px;
 }
 
 
@@ -362,11 +391,16 @@ nav#main-nav {
   text-transform: uppercase;
 }
 
-.set-grid-header-row .sg-h:nth-child(1) { width: 30px; }
+/* Bilateral: Reps, Weight, Status */
+.set-grid-header-row .sg-h:nth-child(1) { width: 55px; }
 .set-grid-header-row .sg-h:nth-child(2) { width: 55px; }
-.set-grid-header-row .sg-h:nth-child(3) { width: 55px; }
-.set-grid-header-row .sg-h:nth-child(4) { flex: 1; }
-.set-grid-header-row .sg-h:nth-child(5) { width: 32px; }
+.set-grid-header-row .sg-h:nth-child(3) { flex: 1; }
+
+/* Unilateral: Reps/L, Reps/R, Weight, Status */
+.set-grid-v2.unilateral .set-grid-header-row .sg-h:nth-child(1) { width: 42px; }
+.set-grid-v2.unilateral .set-grid-header-row .sg-h:nth-child(2) { width: 42px; }
+.set-grid-v2.unilateral .set-grid-header-row .sg-h:nth-child(3) { width: 42px; flex: none; }
+.set-grid-v2.unilateral .set-grid-header-row .sg-h:nth-child(4) { flex: none; }
 
 .set-row-v2 {
   display: flex;
@@ -425,7 +459,6 @@ nav#main-nav {
 }
 
 .strip-btn.face-btn[data-feeling="good"].selected { background: rgba(139,195,74,0.25); }
-.strip-btn.face-btn[data-feeling="meh"].selected { background: rgba(255,193,7,0.25); }
 .strip-btn.face-btn[data-feeling="dying"].selected { background: rgba(244,67,54,0.25); }
 
 .strip-btn.skip-btn {
@@ -442,7 +475,6 @@ nav#main-nav {
   opacity: 0.4;
 }
 
-/* Global chess clock timer */
 /* Toolbar toggle (nav + info + youtube + swap) inside card */
 .toolbar-toggle {
   display: flex;
@@ -483,67 +515,9 @@ nav#main-nav {
   background: rgba(255, 167, 38, 0.15);
 }
 
-/* Exercise header row: info left, timer right */
-.exercise-header-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 12px;
-}
-
 .exercise-header-info {
   flex: 1;
   min-width: 0;
-}
-
-/* Timer box (rounded frame inside card) */
-.timer-box {
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 8px 12px;
-  border-radius: var(--radius);
-  border: 2px solid var(--border);
-  background: var(--surface2);
-  transition: all 0.2s;
-  user-select: none;
-  min-width: 90px;
-}
-
-.timer-box.timer-rest {
-  border-color: var(--success);
-  background: rgba(102, 187, 106, 0.08);
-}
-
-.timer-box.timer-work {
-  border-color: var(--danger);
-  background: rgba(239, 83, 80, 0.08);
-}
-
-.timer-box.timer-warning {
-  border-color: var(--danger);
-  background: rgba(239, 83, 80, 0.08);
-  animation: pulse 0.5s infinite alternate;
-}
-
-.global-timer-display {
-  font-size: 1.6rem;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  color: var(--text);
-  margin-top: 4px;
-}
-
-.timer-rest .global-timer-display { color: var(--success); }
-.timer-work .global-timer-display { color: var(--danger); }
-.timer-warning .global-timer-display { color: var(--danger); }
-
-.timer-toggle {
-  display: flex;
-  border-radius: 6px;
-  overflow: hidden;
-  border: 1px solid var(--border);
 }
 
 .toggle-btn {
@@ -562,16 +536,8 @@ nav#main-nav {
   border-right: 1px solid var(--border);
 }
 
-.toggle-work {
-  color: var(--danger);
-}
-
 .toggle-rest {
   color: var(--success);
-}
-
-.toggle-work.toggle-active {
-  background: rgba(239, 83, 80, 0.2);
 }
 
 .toggle-rest.toggle-active {
@@ -902,6 +868,86 @@ nav#main-nav {
   text-align: center;
   margin-bottom: 12px;
 }
+
+/* Toolbar row: toolbar + timer outside */
+.toolbar-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toolbar-timer-outside {
+  font-size: 0.8rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+  margin-left: auto;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.toolbar-timer-outside:empty {
+  display: none;
+}
+
+.toolbar-timer-outside.rest-active {
+  color: var(--success);
+}
+
+.toolbar-timer-outside.rest-warning {
+  color: var(--danger);
+  animation: pulse 0.5s infinite alternate;
+}
+
+.toolbar-timer-outside.rest-done {
+  color: var(--danger);
+}
+
+/* Set navigation toolbar */
+.set-toolbar {
+  margin-top: 10px;
+}
+
+.set-indicator-bar {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--accent);
+  padding: 6px 8px;
+  user-select: none;
+}
+
+/* Info popover */
+.info-popover {
+  position: relative;
+  background: var(--surface2);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 12px 32px 12px 12px;
+  margin-bottom: 8px;
+}
+
+.info-popover.hidden {
+  display: none;
+}
+
+.info-popover-close {
+  position: absolute;
+  top: 4px;
+  right: 8px;
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 4px;
+  line-height: 1;
+}
+
+.info-popover-close:hover {
+  color: var(--text);
+}
+
+
 
 @media (max-width: 400px) {
   .set-input {

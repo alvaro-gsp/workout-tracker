@@ -1,14 +1,18 @@
 const Workout = {
-  _timer: null,
-  _timerSeconds: 0,
-  _timerMode: null,
-  _timerRestTarget: 0,
+  _restTimer: null,
+  _restSeconds: -1,
+  _sessionTimer: null,
+  _sessionSeconds: 0,
   _beepCtx: null,
 
   _currentDayId: null,
   _currentExIdx: 0,
+  _currentSetIdx: 0,
   _completedData: [],
   _activeExercises: {},
+  _setBuffer: {},
+  _notesBuffer: {},
+  _currentLogId: null,
 
   _beep() {
     try {
@@ -20,9 +24,9 @@ const Workout = {
       gain.connect(ctx.destination);
       osc.frequency.value = 880;
       osc.type = 'square';
-      gain.gain.value = 0.3;
+      gain.gain.value = 0.5;
       osc.start();
-      osc.stop(ctx.currentTime + 0.12);
+      osc.stop(ctx.currentTime + 0.15);
     } catch {}
   },
 
@@ -30,15 +34,17 @@ const Workout = {
     try {
       if (!this._beepCtx) this._beepCtx = new (window.AudioContext || window.webkitAudioContext)();
       const ctx = this._beepCtx;
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.frequency.value = 1200;
-      osc.type = 'square';
-      gain.gain.value = 0.4;
-      osc.start();
-      osc.stop(ctx.currentTime + 0.4);
+      [0, 0.2, 0.4].forEach(delay => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.value = 1200;
+        osc.type = 'square';
+        gain.gain.value = 0.5;
+        osc.start(ctx.currentTime + delay);
+        osc.stop(ctx.currentTime + delay + 0.15);
+      });
     } catch {}
   },
 
@@ -46,7 +52,8 @@ const Workout = {
 
   render() {
     const container = document.getElementById('view-workout');
-    this._stopTimer();
+    this._stopRestTimer();
+    this._stopSessionTimer();
     container.innerHTML = '';
 
     container.innerHTML += `<div class="day-selector">
@@ -64,10 +71,15 @@ const Workout = {
       btn.addEventListener('click', () => {
         container.querySelectorAll('.day-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
-        this._stopTimer();
+        this._stopRestTimer();
+        this._stopSessionTimer();
         this._activeExercises = {};
         this._completedData = [];
+        this._setBuffer = {};
+        this._notesBuffer = {};
         this._currentExIdx = 0;
+        this._currentSetIdx = 0;
+        this._currentLogId = null;
         this._showSummary(btn.dataset.day);
       });
     });
@@ -79,7 +91,7 @@ const Workout = {
 
   _showSummary(dayId) {
     this._currentDayId = dayId;
-    this._currentDraftId = null;
+    this._currentLogId = null;
     const day = ROUTINE[dayId];
     const area = document.getElementById('workout-area');
     const total = day.exercises.length;
@@ -96,7 +108,7 @@ const Workout = {
       </div>`;
     });
     html += '</div>';
-    html += `<button class="btn btn-primary" id="start-workout">${hasSession ? 'Continuar' : 'Start'}</button>`;
+    html += `<button class="btn btn-primary" id="start-workout">${hasSession ? 'Continue' : 'Start'}</button>`;
     html += '</div>';
 
     area.innerHTML = html;
@@ -105,137 +117,250 @@ const Workout = {
       if (!hasSession) {
         this._completedData = [];
         this._currentExIdx = 0;
+        this._currentSetIdx = 0;
         this._activeExercises = {};
+        this._setBuffer = {};
+        this._notesBuffer = {};
+        this._currentLogId = null;
+        this._enterSessionMode();
+        this._showWarmup();
+      } else {
+        this._enterSessionMode();
+        this._startSessionTimer();
+        this._renderExercise();
       }
-      this._enterSessionMode();
+    });
+  },
+
+  _showWarmup() {
+    const area = document.getElementById('workout-area');
+    const day = ROUTINE[this._currentDayId];
+    const total = day.exercises.length;
+
+    let html = `<div class="card exercise-active-card">
+      <div class="toolbar-row">
+      <div class="toolbar-toggle">
+        <button class="toggle-btn toggle-nav" id="warmup-home" title="Home">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12l9-9 9 9"/><path d="M5 10v10a1 1 0 001 1h4v-6h4v6h4a1 1 0 001-1V10"/></svg>
+        </button>
+        <button class="toggle-btn toggle-nav" id="warmup-next" title="Start workout">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+        <a href="${WARMUP.videoUrl}" target="_blank" class="toggle-btn toggle-yt" title="Follow along on YouTube" style="text-decoration:none">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M23.5 6.2a3 3 0 00-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 00.5 6.2 31.9 31.9 0 000 12a31.9 31.9 0 00.5 5.8 3 3 0 002.1 2.1c1.9.6 9.4.6 9.4.6s7.5 0 9.4-.6a3 3 0 002.1-2.1A31.9 31.9 0 0024 12a31.9 31.9 0 00-.5-5.8zM9.5 15.6V8.4l6.3 3.6-6.3 3.6z"/></svg>
+        </a>
+      </div>
+      </div>
+
+      <div class="exercise-fixed-header">
+        <div class="exercise-header-info">
+          <div class="exercise-name">
+            <span style="font-weight:700">0/${total}</span> Warm-up
+          </div>
+          <div class="exercise-target">${WARMUP.duration} | ${WARMUP.intervals}</div>
+        </div>
+      </div>
+
+      <div style="margin-top:12px">`;
+
+    WARMUP.exercises.forEach(ex => {
+      html += `<div style="display:flex;gap:8px;padding:6px 0;border-bottom:1px solid var(--surface-alt);font-size:0.85rem">
+        <span style="color:var(--accent);font-weight:600;min-width:36px">${ex.time}</span>
+        <div>
+          <div style="color:var(--text);font-weight:600">${ex.name}</div>
+          <div style="color:var(--text-dim);font-size:0.8rem">${ex.desc}</div>
+        </div>
+      </div>`;
+    });
+
+    html += '</div></div>';
+    area.innerHTML = html;
+
+    document.getElementById('warmup-home').addEventListener('click', () => {
+      this._exitSessionMode();
+      this._showSummary(this._currentDayId);
+    });
+
+    document.getElementById('warmup-next').addEventListener('click', () => {
+      this._startSessionTimer();
       this._renderExercise();
     });
+  },
+
+  _getSetBuffer(exIdx, totalSets) {
+    if (!this._setBuffer[exIdx]) {
+      this._setBuffer[exIdx] = Array.from({ length: totalSets }, () => ({
+        reps: null, repsL: null, repsR: null, weight: null, feeling: null, skipped: false
+      }));
+    }
+    return this._setBuffer[exIdx];
+  },
+
+  _saveCurrentSetToBuffer() {
+    const exIdx = this._currentExIdx;
+    const setIdx = this._currentSetIdx;
+    const day = ROUTINE[this._currentDayId];
+    const activeEx = this._activeExercises[exIdx] || day.exercises[exIdx];
+    const isUnilateral = activeEx.unilateral || false;
+    const buffer = this._getSetBuffer(exIdx, activeEx.sets);
+
+    const weightInput = document.querySelector('[data-field="weight"]');
+    const skipBtn = document.querySelector('.skip-btn');
+    const faceBtn = document.querySelector('.face-btn.selected');
+
+    buffer[setIdx].weight = weightInput?.value ? parseFloat(weightInput.value) : null;
+    buffer[setIdx].skipped = skipBtn?.classList.contains('active') || false;
+    buffer[setIdx].feeling = faceBtn?.dataset.feeling || null;
+
+    if (isUnilateral) {
+      const repsLInput = document.querySelector('[data-field="repsL"]');
+      const repsRInput = document.querySelector('[data-field="repsR"]');
+      buffer[setIdx].repsL = repsLInput?.value ? parseFloat(repsLInput.value) : null;
+      buffer[setIdx].repsR = repsRInput?.value ? parseFloat(repsRInput.value) : null;
+      buffer[setIdx].reps = null;
+    } else {
+      const repsInput = document.querySelector('[data-field="reps"]');
+      buffer[setIdx].reps = repsInput?.value ? parseFloat(repsInput.value) : null;
+    }
+
+    const notesInput = document.querySelector('textarea[data-ex="0"]');
+    if (notesInput) {
+      this._notesBuffer[exIdx] = notesInput.value || '';
+    }
   },
 
   _renderExercise() {
     const dayId = this._currentDayId;
     const day = ROUTINE[dayId];
     const exIdx = this._currentExIdx;
+    const setIdx = this._currentSetIdx;
     const total = day.exercises.length;
     const originalEx = day.exercises[exIdx];
     const activeEx = this._activeExercises[exIdx] || originalEx;
     const lastLog = this._getLastLogForDay(dayId);
     const lastEx = lastLog?.exercises?.find(e => e.id === activeEx.id);
-    const area = document.getElementById('workout-area');
 
     const lastMaxWeight = lastEx?.sets
       ?.filter(s => !s.skipped)
       .reduce((max, s) => Math.max(max, s.weight || 0), 0) || 0;
-    const suggestedLoad = lastMaxWeight > 0
-      ? `Carga sugerida: ${lastMaxWeight} kg`
-      : 'Elige una carga que puedas manejar con buena tecnica';
 
     const hasAlts = originalEx.alternatives && originalEx.alternatives.length > 0;
-
     const isUnilateral = activeEx.unilateral || false;
     const isSeconds = activeEx.unit === 'seconds';
-    const repsLabel = isSeconds ? 'Segs' : 'Reps';
+    const repsLabel = isSeconds ? 'Secs' : 'Reps';
+
+    const buffer = this._getSetBuffer(exIdx, activeEx.sets);
+    const setData = buffer[setIdx];
+    const bufPrev = setIdx > 0 ? buffer[setIdx - 1] : null;
+    const histSet = lastEx?.sets?.[setIdx];
+
+    if (setData.weight == null && !setData.skipped) {
+      if (bufPrev?.weight != null) {
+        setData.weight = bufPrev.weight;
+      } else if (histSet?.weight != null) {
+        setData.weight = histSet.weight;
+      }
+    }
+
+    const prevReps = (bufPrev?.reps ?? histSet?.reps ?? '');
+    const prevRepsL = (bufPrev?.repsL ?? histSet?.repsL ?? '');
+    const prevRepsR = (bufPrev?.repsR ?? histSet?.repsR ?? '');
+    const prevWeight = (bufPrev?.weight ?? histSet?.weight ?? '');
+
+    const area = document.getElementById('workout-area');
 
     let html = '';
 
     html += `<div class="card exercise-active-card">
+      <div class="toolbar-row">
       <div class="toolbar-toggle">
-        <button class="toggle-btn toggle-nav" id="go-home" title="Inicio">
+        <button class="toggle-btn toggle-nav" id="go-home" title="Home">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12l9-9 9 9"/><path d="M5 10v10a1 1 0 001 1h4v-6h4v6h4a1 1 0 001-1V10"/></svg>
         </button>
-        <button class="toggle-btn toggle-nav" id="prev-exercise" title="Anterior" ${exIdx === 0 ? 'disabled' : ''}>
+        <button class="toggle-btn toggle-nav" id="prev-exercise" title="Previous exercise" ${exIdx === 0 ? 'disabled' : ''}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
         </button>
-        <button class="toggle-btn toggle-nav" id="next-exercise" title="${exIdx < total - 1 ? 'Siguiente' : 'Finalizar'}">
+        <button class="toggle-btn toggle-nav" id="next-exercise" title="${exIdx < total - 1 ? 'Next exercise' : 'Finish'}">
           ${exIdx < total - 1
             ? '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>'
             : '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>'}
         </button>
-        <button class="toggle-btn toggle-info" id="info-btn" title="Informacion">
+        <button class="toggle-btn toggle-info" id="info-btn" title="Info">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
         </button>
-        <button class="toggle-btn toggle-yt" id="yt-btn" title="Ver video">
+        <button class="toggle-btn toggle-yt" id="yt-btn" title="Watch video">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M23.5 6.2a3 3 0 00-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 00.5 6.2 31.9 31.9 0 000 12a31.9 31.9 0 00.5 5.8 3 3 0 002.1 2.1c1.9.6 9.4.6 9.4.6s7.5 0 9.4-.6a3 3 0 002.1-2.1A31.9 31.9 0 0024 12a31.9 31.9 0 00-.5-5.8zM9.5 15.6V8.4l6.3 3.6-6.3 3.6z"/></svg>
         </button>
-        ${hasAlts ? `<button class="toggle-btn toggle-swap" id="swap-btn" title="Alternativas">${this._svgSwap}</button>` : ''}
+        ${hasAlts ? `<button class="toggle-btn toggle-swap" id="swap-btn" title="Alternatives">${this._svgSwap}</button>` : ''}
       </div>
+      <span class="toolbar-timer-outside" id="session-elapsed">0:00</span>
+      </div>
+
       <div class="exercise-fixed-header">
-        <div class="exercise-header-row">
-          <div class="exercise-header-info">
-            <div class="exercise-name">
-              <span style="font-weight:700">${exIdx + 1}/${total}</span> ${activeEx.name}
-            </div>
-            <div class="exercise-target">${activeEx.sets}x${activeEx.repsTarget} | Descanso: ${activeEx.rest}s</div>
-            <div class="exercise-material">${suggestedLoad}</div>
-            ${activeEx.notes ? `<div style="font-size:0.75rem;color:var(--text-dim);margin-top:4px;font-style:italic">${activeEx.notes}</div>` : ''}
+        <div class="exercise-header-info">
+          <div class="exercise-name">
+            <span style="font-weight:700">${exIdx + 1}/${total}</span> ${activeEx.name}
           </div>
-          <div class="timer-box" id="global-timer">
-            <div class="timer-toggle" id="timer-toggle">
-              <button class="toggle-btn toggle-work" id="timer-work" title="Work">
-                <svg class="toggle-icon-play" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><polygon points="10.5,9.5 16,13 10.5,16.5" fill="currentColor" stroke="none"/><path d="M9 2h6"/><path d="M12 2v2"/></svg>
-                <svg class="toggle-icon-pause hidden" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><rect x="9.5" y="9.5" width="2" height="7" rx="0.5" fill="currentColor" stroke="none"/><rect x="12.5" y="9.5" width="2" height="7" rx="0.5" fill="currentColor" stroke="none"/><path d="M9 2h6"/><path d="M12 2v2"/></svg>
-              </button>
-              <button class="toggle-btn toggle-rest" id="timer-rest" title="Rest">
-                <svg class="toggle-icon-play" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><polygon points="10.5,9.5 16,13 10.5,16.5" fill="currentColor" stroke="none"/><path d="M9 2h6"/><path d="M12 2v2"/></svg>
-                <svg class="toggle-icon-pause hidden" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><rect x="9.5" y="9.5" width="2" height="7" rx="0.5" fill="currentColor" stroke="none"/><rect x="12.5" y="9.5" width="2" height="7" rx="0.5" fill="currentColor" stroke="none"/><path d="M9 2h6"/><path d="M12 2v2"/></svg>
-              </button>
-            </div>
-            <div class="global-timer-display" id="global-timer-display">0:00</div>
-          </div>
+          <div class="exercise-target">${activeEx.sets}x${activeEx.repsTarget} | Rest: ${activeEx.rest}s</div>
+          <div class="exercise-goal">${this._computeGoal(activeEx, lastEx, buffer, setIdx)}</div>
         </div>
-      </div>`;
+      </div>
 
-    html += `<div class="sets-scroll-area">
-      <div class="set-grid-v2">
+      <div class="info-popover hidden" id="info-popover">
+        <button class="info-popover-close" id="info-popover-close">&times;</button>
+        <div class="info-popover-body">
+          ${activeEx.execution ? `<div style="font-size:0.85rem;color:var(--text);line-height:1.5">${activeEx.execution}</div>` : ''}
+        </div>
+      </div>
+
+      <div class="toolbar-row set-toolbar">
+        <div class="toolbar-toggle">
+          <button class="toggle-btn toggle-nav" id="prev-set" title="Previous set" ${setIdx === 0 && exIdx === 0 ? 'disabled' : ''}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <span class="set-indicator-bar">Set ${setIdx + 1} / ${activeEx.sets}</span>
+          <button class="toggle-btn toggle-nav" id="next-set" title="Next set">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+        </div>
+        <span class="toolbar-timer-outside" id="rest-display"></span>
+      </div>
+
+      <div class="set-grid-v2${isUnilateral ? ' unilateral' : ''}">
         <div class="set-grid-header-row">
-          <div class="sg-h"></div>
           ${isUnilateral ? '<div class="sg-h">Reps/L</div><div class="sg-h">Reps/R</div>' : `<div class="sg-h">${repsLabel}</div>`}
-          <div class="sg-h">Peso</div>
-          <div class="sg-h">Estado</div>
-        </div>`;
-
-    for (let s = 0; s < activeEx.sets; s++) {
-      const prevSet = lastEx?.sets?.[s];
-      const prevReps = prevSet?.reps || '';
-      const prevRepsL = prevSet?.repsL || '';
-      const prevRepsR = prevSet?.repsR || '';
-      const prevWeight = prevSet?.weight || '';
-      const placeholder_r = prevReps ? `${prevReps}` : '';
-      const placeholder_rl = prevRepsL ? `${prevRepsL}` : '';
-      const placeholder_rr = prevRepsR ? `${prevRepsR}` : '';
-      const placeholder_w = prevWeight ? `${prevWeight}` : '';
-
-      html += `<div class="set-row-v2">
-        <div class="set-label-v2">S${s + 1}</div>`;
-
-      if (isUnilateral) {
-        html += `<input type="number" class="set-input set-input-small" data-ex="0" data-set="${s}" data-field="repsL" placeholder="${placeholder_rl}" inputmode="numeric" min="0">
-        <input type="number" class="set-input set-input-small" data-ex="0" data-set="${s}" data-field="repsR" placeholder="${placeholder_rr}" inputmode="numeric" min="0">`;
-      } else {
-        html += `<input type="number" class="set-input set-input-small" data-ex="0" data-set="${s}" data-field="reps" placeholder="${placeholder_r}" inputmode="numeric" min="0">`;
-      }
-
-      html += `<input type="number" class="set-input set-input-small" data-ex="0" data-set="${s}" data-field="weight" placeholder="${placeholder_w}" inputmode="decimal" step="0.5" min="0">
-        <div class="status-strip" data-ex="0" data-set="${s}">
-          <button class="strip-btn face-btn" data-feeling="good" title="Bien">&#128578;</button>
-          <button class="strip-btn face-btn" data-feeling="meh" title="Regular">&#128528;</button>
-          <button class="strip-btn face-btn" data-feeling="dying" title="Moribundo">&#129397;</button>
-          <button class="strip-btn skip-btn" data-ex="0" data-set="${s}" title="No pude completarla">&#128128;</button>
+          <div class="sg-h">Weight</div>
+          <div class="sg-h">Status</div>
         </div>
-      </div>`;
+        <div class="set-row-v2${setData.skipped ? ' skipped' : ''}">`;
+
+    if (isUnilateral) {
+      html += `<input type="number" class="set-input set-input-small" data-field="repsL" placeholder="${prevRepsL}" inputmode="numeric" min="0" ${setData.skipped ? 'disabled' : ''} ${setData.repsL != null ? `value="${setData.repsL}"` : ''}>
+        <input type="number" class="set-input set-input-small" data-field="repsR" placeholder="${prevRepsR}" inputmode="numeric" min="0" ${setData.skipped ? 'disabled' : ''} ${setData.repsR != null ? `value="${setData.repsR}"` : ''}>`;
+    } else {
+      html += `<input type="number" class="set-input set-input-small" data-field="reps" placeholder="${prevReps}" inputmode="numeric" min="0" ${setData.skipped ? 'disabled' : ''} ${setData.reps != null ? `value="${setData.reps}"` : ''}>`;
     }
 
-    html += `</div></div>`;
+    html += `<input type="number" class="set-input set-input-small" data-field="weight" placeholder="${prevWeight}" inputmode="decimal" step="0.5" min="0" ${setData.skipped ? 'disabled' : ''} ${setData.weight != null ? `value="${setData.weight}"` : ''}>
+          <div class="status-strip">
+            <button class="strip-btn face-btn${setData.feeling === 'good' ? ' selected' : ''}" data-feeling="good" title="Nailed it" ${setData.skipped ? 'disabled' : ''}>&#128170;</button>
+            <button class="strip-btn face-btn${setData.feeling === 'dying' ? ' selected' : ''}" data-feeling="dying" title="Dying" ${setData.skipped ? 'disabled' : ''}>&#129397;</button>
+            <button class="strip-btn skip-btn${setData.skipped ? ' active' : ''}" title="Could not complete">&#128128;</button>
+          </div>
+        </div>
+      </div>
 
-    html += `<textarea class="notes-input" data-ex="0" placeholder="Notas: sensaciones, dolor, ajustes..."></textarea>`;
+      <textarea class="notes-input" data-ex="0" placeholder="Notes: feelings, pain, adjustments...">${this._notesBuffer[exIdx] || ''}</textarea>
 
-    html += `</div>`;
+    </div>`;
 
     html += `<div class="autosave-bar" id="autosave-bar">
-      <span class="autosave-status" id="autosave-status">Autoguardado activo</span>
+      <span class="autosave-status" id="autosave-status">Progress saved on advance</span>
     </div>`;
 
     area.innerHTML = html;
+    this._updateSessionTimerDisplay();
+    this._updateRestDisplay();
     this._bindExerciseEvents();
   },
 
@@ -243,63 +368,39 @@ const Workout = {
     const area = document.getElementById('workout-area');
     const dayId = this._currentDayId;
 
-    document.getElementById('timer-work')?.addEventListener('click', () => {
-      if (this._timerMode === 'work' && this._timer) {
-        this._pauseTimer();
-      } else if (this._timerMode === 'work' && !this._timer) {
-        this._resumeWorkTimer();
-      } else {
-        this._startWorkTimer();
-      }
-    });
-
-    document.getElementById('timer-rest')?.addEventListener('click', () => {
-      if (this._timerMode === 'rest' && this._timer) {
-        this._pauseTimer();
-      } else if (this._timerMode === 'rest' && !this._timer) {
-        this._resumeRestTimer();
-      } else {
-        this._startRestTimer();
-      }
-    });
-
     area.querySelectorAll('.face-btn').forEach(btn => {
       btn.addEventListener('click', () => {
-        const parent = btn.closest('.status-strip');
+        const parent = btn.closest('.status-strip') || btn.parentElement;
         parent.querySelectorAll('.face-btn').forEach(b => b.classList.remove('selected'));
         btn.classList.add('selected');
+        this._saveCurrentSetToBuffer();
         this._autosave(dayId);
       });
     });
 
-    area.querySelectorAll('.skip-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const allRows = Array.from(area.querySelectorAll('.set-row-v2'));
-        const clickedRow = btn.closest('.set-row-v2');
-        const clickedIdx = allRows.indexOf(clickedRow);
-        const activating = !btn.classList.contains('active');
+    area.querySelector('.skip-btn')?.addEventListener('click', () => {
+      const skipBtn = area.querySelector('.skip-btn');
+      const row = skipBtn.closest('.set-row-v2');
+      const activating = !skipBtn.classList.contains('active');
 
-        if (activating) {
-          allRows.forEach((row, i) => {
-            if (i >= clickedIdx) {
-              row.classList.add('skipped');
-              row.querySelector('.skip-btn').classList.add('active');
-              row.querySelectorAll('.set-input').forEach(inp => { inp.disabled = true; inp.value = ''; });
-              row.querySelectorAll('.face-btn').forEach(fb => { fb.classList.remove('selected'); fb.disabled = true; });
-            }
-          });
-        } else {
-          allRows.forEach((row, i) => {
-            if (i >= clickedIdx) {
-              row.classList.remove('skipped');
-              row.querySelector('.skip-btn').classList.remove('active');
-              row.querySelectorAll('.set-input').forEach(inp => inp.disabled = false);
-              row.querySelectorAll('.face-btn').forEach(fb => fb.disabled = false);
-            }
-          });
+      if (activating) {
+        row.classList.add('skipped');
+        skipBtn.classList.add('active');
+        row.querySelectorAll('.set-input').forEach(inp => { inp.disabled = true; inp.value = ''; });
+        row.querySelectorAll('.face-btn').forEach(fb => { fb.classList.remove('selected'); fb.disabled = true; });
+      } else {
+        row.classList.remove('skipped');
+        skipBtn.classList.remove('active');
+        row.querySelectorAll('.set-input').forEach(inp => inp.disabled = false);
+        row.querySelectorAll('.face-btn').forEach(fb => fb.disabled = false);
+        const activeEx = this._activeExercises[this._currentExIdx] || day.exercises[this._currentExIdx];
+        const buf = this._getSetBuffer(this._currentExIdx, activeEx.sets);
+        for (let i = this._currentSetIdx; i < activeEx.sets; i++) {
+          buf[i].skipped = false;
         }
-        this._autosave(dayId);
-      });
+      }
+      this._saveCurrentSetToBuffer();
+      this._autosave(dayId);
     });
 
     document.getElementById('swap-btn')?.addEventListener('click', (e) => {
@@ -312,11 +413,11 @@ const Workout = {
 
       const options = [originalEx, ...alts].filter(a => a.id !== currentActive.id);
 
-      let listHtml = '<h3 style="margin-bottom:12px;color:var(--accent)">Cambiar ejercicio</h3>';
+      let listHtml = '<h3 style="margin-bottom:12px;color:var(--accent)">Switch exercise</h3>';
       options.forEach(alt => {
         listHtml += `<button class="btn btn-secondary alt-option" data-alt-id="${alt.id}" style="width:100%;margin-bottom:8px;text-align:left">${alt.name}</button>`;
       });
-      listHtml += `<button class="btn btn-secondary" onclick="UI.hideModal()" style="width:100%;margin-top:4px">Cancelar</button>`;
+      listHtml += `<button class="btn btn-secondary" onclick="UI.hideModal()" style="width:100%;margin-top:4px">Cancel</button>`;
 
       UI.showModal(listHtml);
 
@@ -326,6 +427,8 @@ const Workout = {
           const selected = [originalEx, ...alts].find(a => a.id === altId);
           if (selected) {
             this._activeExercises[exIdx] = selected;
+            this._setBuffer[exIdx] = null;
+            this._currentSetIdx = 0;
             UI.hideModal();
             this._renderExercise();
           }
@@ -337,31 +440,117 @@ const Workout = {
       input.addEventListener('input', () => {
         const val = parseFloat(input.value);
         if (val < 0) input.value = 0;
+        this._saveCurrentSetToBuffer();
         this._autosave(dayId);
       });
     });
 
     area.querySelectorAll('.notes-input').forEach(input => {
-      input.addEventListener('input', () => this._autosave(dayId));
+      input.addEventListener('input', () => {
+        this._notesBuffer[this._currentExIdx] = input.value || '';
+        this._autosave(dayId);
+      });
+    });
+
+    document.getElementById('info-btn')?.addEventListener('click', () => {
+      document.getElementById('info-popover').classList.toggle('hidden');
+    });
+
+    document.getElementById('info-popover-close')?.addEventListener('click', () => {
+      document.getElementById('info-popover').classList.add('hidden');
+    });
+
+    document.getElementById('next-set')?.addEventListener('click', () => {
+      this._saveCurrentSetToBuffer();
+      const day = ROUTINE[this._currentDayId];
+      const activeEx = this._activeExercises[this._currentExIdx] || day.exercises[this._currentExIdx];
+      const buffer = this._getSetBuffer(this._currentExIdx, activeEx.sets);
+      const currentSet = buffer[this._currentSetIdx];
+
+      if (!currentSet.skipped && !this._hasReps(currentSet, activeEx)) {
+        this._flashValidation();
+        return;
+      }
+
+      if (currentSet.skipped) {
+        for (let i = this._currentSetIdx; i < activeEx.sets; i++) {
+          buffer[i].skipped = true;
+        }
+        this._saveCurrentExercise();
+        this._progressiveSave();
+        this._goToNextExercise();
+      } else if (this._currentSetIdx < activeEx.sets - 1) {
+        this._saveCurrentExercise();
+        this._progressiveSave();
+        this._currentSetIdx++;
+        this._startRestTimer();
+        this._renderExercise();
+      } else {
+        this._saveCurrentExercise();
+        this._progressiveSave();
+        this._goToNextExercise();
+      }
+    });
+
+    document.getElementById('prev-set')?.addEventListener('click', () => {
+      this._saveCurrentSetToBuffer();
+
+      if (this._currentSetIdx > 0) {
+        this._currentSetIdx--;
+        this._renderExercise();
+      } else if (this._currentExIdx > 0) {
+        this._saveCurrentExercise();
+        this._currentExIdx--;
+        const day = ROUTINE[this._currentDayId];
+        const prevEx = this._activeExercises[this._currentExIdx] || day.exercises[this._currentExIdx];
+        this._currentSetIdx = prevEx.sets - 1;
+        this._renderExercise();
+      }
     });
 
     document.getElementById('next-exercise')?.addEventListener('click', () => {
+      this._saveCurrentSetToBuffer();
+      const day = ROUTINE[this._currentDayId];
+      const activeEx = this._activeExercises[this._currentExIdx] || day.exercises[this._currentExIdx];
+      const buffer = this._getSetBuffer(this._currentExIdx, activeEx.sets);
+      const currentSet = buffer[this._currentSetIdx];
+
+      if (!currentSet.skipped && !this._hasReps(currentSet, activeEx)) {
+        this._flashValidation();
+        return;
+      }
+
       this._saveCurrentExercise();
+      this._progressiveSave();
       this._goToNextExercise();
     });
 
     document.getElementById('prev-exercise')?.addEventListener('click', () => {
+      this._saveCurrentSetToBuffer();
       this._saveCurrentExercise();
-      this._stopTimer();
       this._currentExIdx--;
+      this._currentSetIdx = 0;
       this._renderExercise();
     });
 
     document.getElementById('go-home')?.addEventListener('click', () => {
-      this._saveCurrentExercise();
-      this._stopTimer();
-      this._exitSessionMode();
-      this._showSummary(this._currentDayId);
+      UI.showModal(`
+        <h3 style="margin-bottom:12px">Leave workout?</h3>
+        <p style="color:var(--text-dim);margin-bottom:16px">Your progress will be saved, but the session timer will reset.</p>
+        <div class="btn-group">
+          <button class="btn btn-secondary" onclick="UI.hideModal()">Cancel</button>
+          <button class="btn btn-danger" id="confirm-home">Leave</button>
+        </div>
+      `);
+      document.getElementById('confirm-home').addEventListener('click', () => {
+        UI.hideModal();
+        this._saveCurrentSetToBuffer();
+        this._saveCurrentExercise();
+        this._stopRestTimer();
+        this._stopSessionTimer();
+        this._exitSessionMode();
+        this._showSummary(this._currentDayId);
+      });
     });
   },
 
@@ -369,48 +558,22 @@ const Workout = {
     const day = ROUTINE[this._currentDayId];
     const exIdx = this._currentExIdx;
     const activeEx = this._activeExercises[exIdx] || day.exercises[exIdx];
-    const isUnilateral = activeEx.unilateral || false;
+    const buffer = this._getSetBuffer(exIdx, activeEx.sets);
 
-    const sets = [];
-    for (let s = 0; s < activeEx.sets; s++) {
-      const weightInput = document.querySelector(`[data-ex="0"][data-set="${s}"][data-field="weight"]`);
-      const skipBtn = document.querySelector(`.skip-btn[data-ex="0"][data-set="${s}"]`);
-      const faceBtn = document.querySelector(`.status-strip[data-ex="0"][data-set="${s}"] .face-btn.selected`);
-
-      const setData = {
-        weight: weightInput?.value ? parseFloat(weightInput.value) : null,
-        skipped: skipBtn?.classList.contains('active') || false,
-        feeling: faceBtn?.dataset.feeling || null
-      };
-
-      if (isUnilateral) {
-        const repsLInput = document.querySelector(`[data-ex="0"][data-set="${s}"][data-field="repsL"]`);
-        const repsRInput = document.querySelector(`[data-ex="0"][data-set="${s}"][data-field="repsR"]`);
-        setData.repsL = repsLInput?.value ? parseFloat(repsLInput.value) : null;
-        setData.repsR = repsRInput?.value ? parseFloat(repsRInput.value) : null;
-        setData.reps = null;
-      } else {
-        const repsInput = document.querySelector(`[data-ex="0"][data-set="${s}"][data-field="reps"]`);
-        setData.reps = repsInput?.value ? parseFloat(repsInput.value) : null;
-      }
-
-      sets.push(setData);
-    }
-
-    const notesInput = document.querySelector(`textarea[data-ex="0"]`);
-    this._completedData[this._currentExIdx] = {
+    this._completedData[exIdx] = {
       id: activeEx.id,
-      sets: sets,
-      notes: notesInput?.value || ''
+      sets: buffer.map(s => ({ ...s })),
+      notes: this._notesBuffer[exIdx] || ''
     };
   },
 
   _goToNextExercise() {
     const day = ROUTINE[this._currentDayId];
-    this._stopTimer();
 
     if (this._currentExIdx < day.exercises.length - 1) {
       this._currentExIdx++;
+      this._currentSetIdx = 0;
+      this._stopRestTimer();
       this._renderExercise();
     } else {
       this._finishWorkout();
@@ -418,25 +581,23 @@ const Workout = {
   },
 
   _finishWorkout() {
-    this._stopTimer();
+    this._stopRestTimer();
+    this._stopSessionTimer();
     this._exitSessionMode();
-    const dayId = this._currentDayId;
-    const data = { exercises: this._completedData.filter(Boolean) };
+    this._saveCurrentExercise();
+    this._progressiveSave();
 
-    const hasData = data.exercises.some(ex => ex.sets.some(s => s.reps !== null || s.repsL !== null || s.repsR !== null || s.skipped));
-    if (hasData) {
-      Store.saveWorkoutLog(dayId, data);
-    }
+    const totalMins = Math.floor(this._sessionSeconds / 60);
 
     const area = document.getElementById('workout-area');
     area.innerHTML = `
       <div class="workout-complete-banner">
-        <h3>Sesion completada</h3>
-        <p style="color:var(--text-dim);margin-top:8px">Buen trabajo!</p>
+        <h3>Session complete</h3>
+        <p style="color:var(--text-dim);margin-top:8px">Good work! ${totalMins} min total.</p>
       </div>
       <button class="btn btn-sync" id="sync-workout" style="margin-top:12px">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6"/><path d="M2.5 22v-6h6"/><path d="M2 11.5a10 10 0 0 1 18.8-4.3L21.5 8"/><path d="M22 12.5a10 10 0 0 1-18.8 4.2L2.5 16"/></svg>
-        Sincronizar
+        Sync
       </button>
     `;
 
@@ -455,125 +616,88 @@ const Workout = {
     });
   },
 
-  _startWorkTimer() {
-    this._stopTimer();
-    this._timerMode = 'work';
-    this._timerSeconds = 0;
-    this._updateTimerUI();
-
-    this._timer = setInterval(() => {
-      this._timerSeconds++;
-      this._updateTimerUI();
+  // Session timer - total elapsed
+  _startSessionTimer() {
+    this._sessionSeconds = 0;
+    this._sessionTimer = setInterval(() => {
+      this._sessionSeconds++;
+      this._updateSessionTimerDisplay();
     }, 1000);
   },
 
+  _stopSessionTimer() {
+    if (this._sessionTimer) {
+      clearInterval(this._sessionTimer);
+      this._sessionTimer = null;
+    }
+  },
+
+  _updateSessionTimerDisplay() {
+    const el = document.getElementById('session-elapsed');
+    if (!el) return;
+    const mins = Math.floor(this._sessionSeconds / 60);
+    const s = this._sessionSeconds % 60;
+    el.textContent = `${mins}:${s.toString().padStart(2, '0')}`;
+  },
+
+  // Rest timer - countdown, auto-starts on set change
   _startRestTimer() {
-    this._stopTimer();
+    this._stopRestTimer();
     const day = ROUTINE[this._currentDayId];
     const ex = this._activeExercises[this._currentExIdx] || day.exercises[this._currentExIdx];
-    this._timerMode = 'rest';
-    this._timerRestTarget = ex.rest;
-    this._timerSeconds = ex.rest;
-    this._updateTimerUI();
+    this._restSeconds = ex.rest;
 
-    this._timer = setInterval(() => {
-      this._timerSeconds--;
-      this._updateTimerUI();
+    this._restTimer = setInterval(() => {
+      this._restSeconds--;
+      this._updateRestDisplay();
 
-      if (this._timerSeconds <= 5 && this._timerSeconds > 0) {
+      if (this._restSeconds <= 5 && this._restSeconds > 0) {
         this._beep();
+        if ('vibrate' in navigator) navigator.vibrate(100);
       }
 
-      if (this._timerSeconds <= 0) {
+      if (this._restSeconds <= 0) {
         this._beepFinal();
         if ('vibrate' in navigator) navigator.vibrate([200, 100, 200, 100, 200]);
-        this._startWorkTimer();
+        this._stopRestTimer();
+        this._restSeconds = 0;
+        this._updateRestDisplay();
       }
     }, 1000);
+
+    this._updateRestDisplay();
   },
 
-  _resumeWorkTimer() {
-    this._timer = setInterval(() => {
-      this._timerSeconds++;
-      this._updateTimerUI();
-    }, 1000);
-    this._updateTimerUI();
-  },
-
-  _resumeRestTimer() {
-    this._timer = setInterval(() => {
-      this._timerSeconds--;
-      this._updateTimerUI();
-
-      if (this._timerSeconds <= 5 && this._timerSeconds > 0) {
-        this._beep();
-      }
-
-      if (this._timerSeconds <= 0) {
-        this._beepFinal();
-        if ('vibrate' in navigator) navigator.vibrate([200, 100, 200, 100, 200]);
-        this._startWorkTimer();
-      }
-    }, 1000);
-    this._updateTimerUI();
-  },
-
-  _pauseTimer() {
-    if (this._timer) {
-      clearInterval(this._timer);
-      this._timer = null;
+  _stopRestTimer() {
+    if (this._restTimer) {
+      clearInterval(this._restTimer);
+      this._restTimer = null;
     }
-    this._updateToggleIcons();
   },
 
-  _stopTimer() {
-    if (this._timer) {
-      clearInterval(this._timer);
-      this._timer = null;
-    }
-    this._timerMode = null;
-  },
+  _updateRestDisplay() {
+    const el = document.getElementById('rest-display');
+    if (!el) return;
 
-  _updateTimerUI() {
-    const display = document.getElementById('global-timer-display');
-    const container = document.getElementById('global-timer');
-    if (!display) return;
+    if (this._restTimer || this._restSeconds === 0) {
+      const mins = Math.floor(this._restSeconds / 60);
+      const s = this._restSeconds % 60;
+      const text = `${mins}:${s.toString().padStart(2, '0')}`;
 
-    const secs = Math.abs(this._timerSeconds);
-    const mins = Math.floor(secs / 60);
-    const s = secs % 60;
-    display.textContent = `${mins}:${s.toString().padStart(2, '0')}`;
-
-    container.classList.remove('timer-rest', 'timer-work', 'timer-warning');
-
-    if (this._timerMode === 'rest') {
-      if (this._timerSeconds <= 5) {
-        container.classList.add('timer-warning');
+      if (this._restSeconds === 0) {
+        el.textContent = text;
+        el.className = 'toolbar-timer-outside rest-done';
+      } else if (this._restSeconds <= 5) {
+        el.textContent = text;
+        el.className = 'toolbar-timer-outside rest-warning';
       } else {
-        container.classList.add('timer-rest');
+        el.textContent = text;
+        el.className = 'toolbar-timer-outside rest-active';
       }
-    } else if (this._timerMode === 'work') {
-      container.classList.add('timer-work');
+    } else {
+      el.textContent = '';
+      el.className = 'toolbar-timer-outside';
     }
-
-    this._updateToggleIcons();
-  },
-
-  _updateToggleIcons() {
-    const workBtn = document.getElementById('timer-work');
-    const restBtn = document.getElementById('timer-rest');
-    if (!workBtn || !restBtn) return;
-
-    const workRunning = this._timerMode === 'work' && this._timer;
-    const restRunning = this._timerMode === 'rest' && this._timer;
-
-    workBtn.querySelector('.toggle-icon-play').classList.toggle('hidden', workRunning);
-    workBtn.querySelector('.toggle-icon-pause').classList.toggle('hidden', !workRunning);
-    workBtn.classList.toggle('toggle-active', workRunning);
-
-    restBtn.querySelector('.toggle-icon-play').classList.toggle('hidden', restRunning);
-    restBtn.querySelector('.toggle-icon-pause').classList.toggle('hidden', !restRunning);
-    restBtn.classList.toggle('toggle-active', restRunning);
   },
 
   _enterSessionMode() {
@@ -588,62 +712,155 @@ const Workout = {
     document.querySelector('.day-selector')?.classList.remove('hidden-session');
   },
 
-  _autosaveTimeout: null,
-  _currentDraftId: null,
+  _autosave() {},
 
-  _autosave(dayId) {
-    clearTimeout(this._autosaveTimeout);
-    this._autosaveTimeout = setTimeout(() => {
-      this._saveCurrentExercise();
-
-      const data = { exercises: this._completedData.filter(Boolean) };
-      const hasData = data.exercises.some(ex => ex.sets.some(s => s.reps !== null || s.repsL !== null || s.repsR !== null || s.skipped));
-      if (!hasData) return;
-
-      const draftKey = `draft_${dayId}_${new Date().toISOString().slice(0, 10)}`;
-
-      if (!this._currentDraftId) {
-        const existing = Store.get(draftKey, null);
-        if (existing) {
-          this._currentDraftId = existing.id;
-        }
+  _computeGoal(exercise, lastExData, currentBuffer, currentSetIdx) {
+    if (!lastExData || !lastExData.sets || !lastExData.sets.length) {
+      const filledSets = currentBuffer?.filter((s, i) => i < currentSetIdx && !s.skipped && (s.reps != null || s.repsL != null)) || [];
+      if (!filledSets.length) {
+        return '<div class="goal-line goal-first">&#9733; First session — log your baseline</div>';
       }
+      const lastFilled = filledSets[filledSets.length - 1];
+      const w = lastFilled.weight != null ? `${lastFilled.weight}kg` : 'No weight';
+      const r = lastFilled.repsL != null
+        ? `${lastFilled.repsL}L / ${lastFilled.repsR || 0}R`
+        : `${lastFilled.reps || 0} reps`;
+      return `<div class="goal-line goal-active">&#9650; Repeat: ${w} &times; ${r}</div>` +
+             '<div class="goal-line goal-dim">&#9654; Match or beat your previous set</div>';
+    }
 
-      if (this._currentDraftId) {
-        const logs = Store.get('logs', []);
-        const idx = logs.findIndex(l => l.id === this._currentDraftId);
-        if (idx >= 0) {
-          logs[idx].exercises = data.exercises;
-          logs[idx].timestamp = new Date().toISOString();
-          Store.set('logs', logs);
-        } else {
-          this._currentDraftId = null;
-          this._autosave(dayId);
-          return;
-        }
+    const validSets = lastExData.sets.filter(s => !s.skipped);
+    if (!validSets.length) {
+      return '<div class="goal-line goal-first">&#9733; First session — log your baseline</div>';
+    }
+
+    const isMaxReps = exercise.repsTarget?.includes('max');
+    const isSeconds = exercise.unit === 'seconds';
+
+    const lastWeight = validSets.reduce((max, s) => Math.max(max, s.weight || 0), 0);
+    const allDying = validSets.every(s => s.feeling === 'dying');
+
+    // Parse target range
+    const targetMatch = exercise.repsTarget?.match(/(\d+)\s*-\s*(\d+)/);
+    const targetMatch2 = exercise.repsTarget?.match(/^(\d+)$/);
+    let maxTarget = null;
+    if (targetMatch) maxTarget = parseInt(targetMatch[2]);
+    else if (targetMatch2) maxTarget = parseInt(targetMatch2[1]);
+
+    const lastReps = validSets.map(s => {
+      if (s.repsL != null || s.repsR != null) return Math.min(s.repsL || 0, s.repsR || 0);
+      return s.reps || 0;
+    });
+    const allAtMax = maxTarget && lastReps.every(r => r >= maxTarget);
+
+    // Determine priority: 'weight', 'reps', or 'technique'
+    let priority;
+    if (isMaxReps || isSeconds) {
+      priority = 'reps';
+    } else if (allAtMax && !allDying) {
+      priority = 'weight';
+    } else if (allAtMax && allDying) {
+      priority = 'technique';
+    } else {
+      priority = 'reps';
+    }
+
+    // Build weight line
+    let weightText;
+    if (isMaxReps || isSeconds) {
+      weightText = lastWeight > 0 ? `${lastWeight}kg — bodyweight+` : 'Bodyweight';
+    } else if (priority === 'weight') {
+      const next = lastWeight + 2.5;
+      weightText = `${lastWeight}kg &#8594; try ${next}kg`;
+    } else {
+      weightText = lastWeight > 0 ? `${lastWeight}kg — hold` : 'No weight';
+    }
+
+    // Build reps line
+    let repsText;
+    if (isMaxReps) {
+      const totalReps = validSets.reduce((sum, s) => sum + (s.reps || 0), 0);
+      const perSet = validSets.map(s => s.reps || 0).join('/');
+      repsText = `${perSet} = ${totalReps} &#8594; aim ${totalReps + 2}+`;
+    } else if (isSeconds) {
+      const times = validSets.map(s => s.reps || 0);
+      const avg = Math.round(times.reduce((a, b) => a + b, 0) / times.length);
+      repsText = `avg ${avg}s &#8594; aim ${avg + 5}s`;
+    } else if (exercise.unilateral) {
+      const lrSets = validSets.map(s => `${s.repsL || 0}/${s.repsR || 0}`).join(', ');
+      if (priority === 'reps') {
+        repsText = `${lrSets} &#8594; +1 per set`;
       } else {
-        const log = Store.saveWorkoutLog(dayId, data);
-        this._currentDraftId = log.id;
-        Store.set(draftKey, { id: log.id });
+        repsText = `${lrSets} — hold`;
       }
+    } else {
+      const perSet = lastReps.join('/');
+      if (priority === 'reps') {
+        const suggested = lastReps.map(r => (maxTarget && r >= maxTarget) ? r : r + 1);
+        repsText = `${perSet} &#8594; aim ${suggested.join('/')}`;
+      } else {
+        repsText = `${perSet} — hold`;
+      }
+    }
 
-      const status = document.getElementById('autosave-status');
-      if (status) {
-        status.textContent = 'Guardado';
-        status.style.color = 'var(--success)';
-        setTimeout(() => {
-          if (status) {
-            status.textContent = 'Autoguardado activo';
-            status.style.color = 'var(--text-dim)';
-          }
-        }, 1500);
+    // Build technique line
+    let techText;
+    if (priority === 'technique') {
+      techText = 'Same load, focus on form';
+    } else if (allDying) {
+      techText = 'Watch form under fatigue';
+    } else {
+      techText = 'Ok';
+    }
+
+    const w = priority === 'weight' ? 'goal-active' : 'goal-dim';
+    const r = priority === 'reps' ? 'goal-active' : 'goal-dim';
+    const t = priority === 'technique' ? 'goal-active' : 'goal-dim';
+
+    return `<div class="goal-line ${w}">&#9650; Weight: ${weightText}</div>` +
+           `<div class="goal-line ${r}">&#9650; Reps: ${repsText}</div>` +
+           `<div class="goal-line ${t}">&#9654; Technique: ${techText}</div>`;
+  },
+
+  _hasReps(setData, exercise) {
+    if (exercise.unilateral) return setData.repsL != null || setData.repsR != null;
+    return setData.reps != null;
+  },
+
+  _flashValidation() {
+    const row = document.querySelector('.set-row-v2');
+    if (!row) return;
+    row.style.outline = '2px solid var(--danger)';
+    setTimeout(() => { row.style.outline = ''; }, 800);
+  },
+
+  _progressiveSave() {
+    const dayId = this._currentDayId;
+    const data = { exercises: this._completedData.filter(Boolean) };
+    const hasData = data.exercises.some(ex =>
+      ex.sets.some(s => s.reps !== null || s.repsL !== null || s.repsR !== null || s.skipped));
+    if (!hasData) return;
+
+    if (this._currentLogId) {
+      const logs = Store.get('logs', []);
+      const idx = logs.findIndex(l => l.id === this._currentLogId);
+      if (idx >= 0) {
+        logs[idx].exercises = data.exercises;
+        logs[idx].timestamp = new Date().toISOString();
+        Store.set('logs', logs);
+      } else {
+        this._currentLogId = null;
+        this._progressiveSave();
       }
-    }, 500);
+    } else {
+      const log = Store.saveWorkoutLog(dayId, data);
+      this._currentLogId = log.id;
+    }
   },
 
   _getLastLogForDay(dayId) {
     const logs = Store.getWorkoutLogs();
-    const dayLogs = logs.filter(l => l.dayId === dayId);
+    const dayLogs = logs.filter(l => l.dayId === dayId && l.id !== this._currentLogId);
     return dayLogs.length ? dayLogs[dayLogs.length - 1] : null;
   }
 };

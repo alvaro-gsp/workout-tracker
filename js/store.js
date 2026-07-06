@@ -76,7 +76,7 @@ const Store = {
     log.id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
     log.dayId = dayId;
     log.timestamp = new Date().toISOString();
-    log.date = new Date().toLocaleDateString('es-ES');
+    log.date = new Date().toLocaleDateString('en-US');
     log.week = this._getWeekNumber();
     logs.push(log);
     this.set('logs', logs);

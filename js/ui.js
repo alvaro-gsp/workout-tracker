@@ -41,7 +41,7 @@ const UI = {
 
   formatDate(isoString) {
     const d = new Date(isoString);
-    return d.toLocaleDateString('es-ES', {
+    return d.toLocaleDateString('en-US', {
       weekday: 'short',
       day: 'numeric',
       month: 'short',

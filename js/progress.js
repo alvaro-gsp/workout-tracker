@@ -5,8 +5,8 @@ const Progress = {
 
     if (logs.length < 2) {
       container.innerHTML = `<div class="empty-state">
-        <p>Necesitas al menos 2 entrenos para ver tu progreso.</p>
-        <p style="font-size:0.85rem">Sigue entrenando y vuelve aqui.</p>
+        <p>You need at least 2 workouts to see your progress.</p>
+        <p style="font-size:0.85rem">Keep training and come back here.</p>
       </div>`;
       return;
     }
@@ -35,7 +35,7 @@ const Progress = {
       return acc;
     }, 0);
 
-    const totalDominadas = logs.reduce((acc, log) => {
+    const totalPullups = logs.reduce((acc, log) => {
       if (!log.exercises) return acc;
       log.exercises.forEach(ex => {
         if (ex.id && ex.id.includes('dominada')) {
@@ -52,19 +52,19 @@ const Progress = {
     return `<div class="stat-grid">
       <div class="stat-card">
         <div class="stat-value">${totalWorkouts}</div>
-        <div class="stat-label">Entrenos totales</div>
+        <div class="stat-label">Total workouts</div>
       </div>
       <div class="stat-card">
         <div class="stat-value">${thisWeek}/3</div>
-        <div class="stat-label">Esta semana</div>
+        <div class="stat-label">This week</div>
       </div>
       <div class="stat-card">
         <div class="stat-value">${Math.round(totalVolume).toLocaleString()}</div>
-        <div class="stat-label">Volumen total (kg)</div>
+        <div class="stat-label">Total volume (kg)</div>
       </div>
       <div class="stat-card">
-        <div class="stat-value">${totalDominadas}</div>
-        <div class="stat-label">Dominadas totales</div>
+        <div class="stat-value">${totalPullups}</div>
+        <div class="stat-label">Total pull-ups</div>
       </div>
     </div>`;
   },
@@ -103,7 +103,7 @@ const Progress = {
       });
     });
 
-    let html = '<h3 style="color:var(--accent);margin:16px 0 8px">Progresion por ejercicio</h3>';
+    let html = '<h3 style="color:var(--accent);margin:16px 0 8px">Progress by exercise</h3>';
 
     Object.values(exerciseMap).forEach(ex => {
       if (ex.entries.length < 1) return;
@@ -123,7 +123,7 @@ const Progress = {
       } else if (repsDiff < 0 && weightDiff <= 0) {
         trend = `<span style="color:var(--danger)">&#9660; ${repsDiff} reps</span>`;
       } else {
-        trend = `<span style="color:var(--text-dim)">= sin cambio</span>`;
+        trend = `<span style="color:var(--text-dim)">= no change</span>`;
       }
 
       html += `<div class="card">

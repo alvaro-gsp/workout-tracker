@@ -16,12 +16,12 @@ const App = {
     document.getElementById('modal-content').innerHTML = `
       <div style="text-align:center">
         <h2 style="color:var(--accent);margin-bottom:16px">Workout Tracker</h2>
-        <p style="color:var(--text-dim);margin-bottom:16px">Introduce tu PIN para acceder</p>
+        <p style="color:var(--text-dim);margin-bottom:16px">Enter your PIN to access</p>
         <input type="password" class="set-input" id="login-pin" style="width:140px;font-size:1.2rem;text-align:center" maxlength="4" inputmode="numeric" autofocus>
         <div style="margin-top:16px">
-          <button class="btn btn-primary" id="login-btn">Entrar</button>
+          <button class="btn btn-primary" id="login-btn">Enter</button>
         </div>
-        <p id="login-error" style="color:var(--danger);margin-top:8px;font-size:0.85rem;display:none">PIN incorrecto</p>
+        <p id="login-error" style="color:var(--danger);margin-top:8px;font-size:0.85rem;display:none">Wrong PIN</p>
       </div>
     `;
 
