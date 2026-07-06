@@ -5,8 +5,8 @@ const History = {
 
     if (!logs.length) {
       container.innerHTML = `<div class="empty-state">
-        <p>Sin entrenos registrados todavia.</p>
-        <p style="font-size:0.85rem">Ve a la pestana "Entreno" y completa tu primera sesion.</p>
+        <p>No workouts logged yet.</p>
+        <p style="font-size:0.85rem">Go to the "Workout" tab and complete your first session.</p>
       </div>`;
       return;
     }
@@ -14,7 +14,7 @@ const History = {
     const sorted = [...logs].reverse();
 
     let html = `<div class="btn-group" style="margin-bottom:16px">
-      <button class="btn btn-secondary btn-small" id="export-json">Exportar JSON</button>
+      <button class="btn btn-secondary btn-small" id="export-json">Export JSON</button>
     </div>`;
 
     let currentWeek = null;
@@ -25,7 +25,7 @@ const History = {
 
       if (log.week !== currentWeek) {
         currentWeek = log.week;
-        html += `<div class="week-label">Semana ${log.week}</div>`;
+        html += `<div class="week-label">Week ${log.week}</div>`;
       }
 
       html += `<div class="card history-entry" data-logid="${log.id}">
@@ -37,7 +37,7 @@ const History = {
           const exDef = day.exercises.find(e => e.id === ex.id);
           if (!exDef) return;
 
-          const feelingEmojis = { great: '💪', good: '🙂', meh: '😐', hard: '😫', dying: '🤯' };
+          const feelingEmojis = { good: '\u{1f4aa}', meh: '\u{1f4aa}', dying: '\u{1f925}' };
 
           const setsText = ex.sets
             ?.filter(s => s.reps !== null || s.repsL !== null || s.skipped)
@@ -53,7 +53,7 @@ const History = {
               if (s.feeling) t += feelingEmojis[s.feeling] || '';
               return t;
             })
-            .join(' | ') || 'sin datos';
+            .join(' | ') || 'no data';
 
           html += `<div class="history-exercise">
             <strong>${exDef.name}</strong>: ${setsText}
@@ -65,7 +65,7 @@ const History = {
         });
       }
 
-      html += `<button class="btn btn-small btn-danger" style="margin-top:8px" data-delete="${log.id}">Eliminar</button>`;
+      html += `<button class="btn btn-small btn-danger" style="margin-top:8px" data-delete="${log.id}">Delete</button>`;
       html += `</div>`;
     });
 
@@ -75,11 +75,11 @@ const History = {
       btn.addEventListener('click', () => {
         const logId = btn.dataset.delete;
         UI.showModal(`
-          <h3 style="margin-bottom:12px">Eliminar entreno?</h3>
-          <p style="color:var(--text-dim);margin-bottom:16px">Esta accion no se puede deshacer.</p>
+          <h3 style="margin-bottom:12px">Delete workout?</h3>
+          <p style="color:var(--text-dim);margin-bottom:16px">This action cannot be undone.</p>
           <div class="btn-group">
-            <button class="btn btn-secondary" onclick="UI.hideModal()">Cancelar</button>
-            <button class="btn btn-danger" id="confirm-delete" data-id="${logId}">Eliminar</button>
+            <button class="btn btn-secondary" onclick="UI.hideModal()">Cancel</button>
+            <button class="btn btn-danger" id="confirm-delete" data-id="${logId}">Delete</button>
           </div>
         `);
         document.getElementById('confirm-delete').addEventListener('click', () => {
