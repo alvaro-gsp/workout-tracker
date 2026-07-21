@@ -5,7 +5,7 @@ const ROUTINE = {
     subtitle: 'Legs + Pull',
     exercises: [
       {
-        id: 'sentadilla_bulgara',
+        id: 'bulgarian_split_squat',
         name: 'Bulgarian split squat',
         unilateral: true,
         sets: 4,
@@ -20,7 +20,7 @@ const ROUTINE = {
 <strong>Tip:</strong> If balance is an issue, do all reps on one side before switching. Look at a fixed point ahead.`
       },
       {
-        id: 'dominadas_prono',
+        id: 'pullups_pronated',
         name: 'Pull-ups (pronated)',
         sets: 5,
         repsTarget: 'max (log total)',
@@ -34,7 +34,7 @@ const ROUTINE = {
 <strong>Tip:</strong> If you fail mid-set, rest 10s and do singles until you can't. Every rep counts for the total.`
       },
       {
-        id: 'peso_muerto_rumano_1p',
+        id: 'single_leg_rdl',
         name: 'Single-leg Romanian deadlift',
         unilateral: true,
         sets: 4,
@@ -51,7 +51,7 @@ const ROUTINE = {
 <strong>Tip:</strong> Keep the dumbbell close to your leg like it's on a rail. Slight bend in standing knee is fine.`
       },
       {
-        id: 'remo_1_mano',
+        id: 'single_arm_row',
         name: 'Single-arm row',
         unilateral: true,
         sets: 4,
@@ -79,7 +79,7 @@ const ROUTINE = {
 <strong>Tip:</strong> This is a rear delt and posture exercise — light weight, high reps, perfect form. Never ego-lift this.`
       },
       {
-        id: 'plancha_a',
+        id: 'plank',
         name: 'Plank',
         unit: 'seconds',
         sets: 3,
@@ -100,7 +100,7 @@ const ROUTINE = {
     subtitle: 'Legs + Push',
     exercises: [
       {
-        id: 'sentadilla_goblet',
+        id: 'goblet_squat',
         name: 'Deep goblet squat',
         sets: 4,
         repsTarget: '10-12',
@@ -113,7 +113,7 @@ const ROUTINE = {
 <strong>Tip:</strong> Use the elbows — at the bottom they should be inside your knees, pushing them out. This is a mobility AND strength exercise.`
       },
       {
-        id: 'press_suelo',
+        id: 'floor_press',
         name: 'Floor press',
         sets: 4,
         repsTarget: '8-12',
@@ -127,7 +127,7 @@ const ROUTINE = {
 <strong>Tip:</strong> The floor limits range of motion — this protects the shoulders while still building chest and triceps. Focus on the lockout.`,
         alternatives: [
           {
-            id: 'flexiones',
+            id: 'pushups',
             name: 'Push-ups',
             sets: 4,
             repsTarget: 'max',
@@ -142,7 +142,7 @@ const ROUTINE = {
         ]
       },
       {
-        id: 'zancada_inversa',
+        id: 'reverse_lunge',
         name: 'Reverse lunge',
         unilateral: true,
         sets: 4,
@@ -156,7 +156,7 @@ const ROUTINE = {
 <strong>Tip:</strong> Reverse lunges are easier on the knees than forward lunges. Keep torso upright and core braced throughout.`
       },
       {
-        id: 'flexiones_elevadas',
+        id: 'decline_pushups',
         name: 'Decline push-ups',
         sets: 4,
         repsTarget: 'max',
@@ -169,7 +169,7 @@ const ROUTINE = {
 <strong>Tip:</strong> The higher your feet, the more shoulder-dominant it becomes. Bench height targets upper chest well.`
       },
       {
-        id: 'press_hombro',
+        id: 'shoulder_press',
         name: 'Standing shoulder press',
         sets: 3,
         repsTarget: '10-12',
@@ -182,7 +182,7 @@ const ROUTINE = {
 <strong>Tip:</strong> Squeeze glutes to prevent back arching. If you can't do it without arching, sit down or reduce weight.`
       },
       {
-        id: 'crunch_banda',
+        id: 'banded_crunch',
         name: 'Banded crunch',
         sets: 3,
         repsTarget: '15',
@@ -202,7 +202,7 @@ const ROUTINE = {
     subtitle: 'Full body heavy',
     exercises: [
       {
-        id: 'peso_muerto_bilateral',
+        id: 'bilateral_rdl',
         name: 'Bilateral Romanian deadlift',
         sets: 4,
         repsTarget: '8-10',
@@ -215,7 +215,7 @@ const ROUTINE = {
 <strong>Tip:</strong> The band adds resistance at the top where dumbbells are weakest. Think about pushing the floor away with your feet on the way up.`
       },
       {
-        id: 'dominadas_supino',
+        id: 'chinups',
         name: 'Chin-ups (supinated/neutral)',
         sets: 5,
         repsTarget: 'max (log total)',
@@ -229,7 +229,7 @@ const ROUTINE = {
 <strong>Tip:</strong> Supinated grip is generally stronger than pronated — use it to build up total volume. If you fail, switch to negatives (jump up, lower slow 5s).`
       },
       {
-        id: 'zancada_estatica_c',
+        id: 'static_lunge',
         name: 'Static lunge',
         unilateral: true,
         sets: 3,
@@ -243,7 +243,7 @@ const ROUTINE = {
 <strong>Tip:</strong> Lighter weight than Day 1 — focus on perfect control, full range of motion, and feeling each muscle work. Quality over quantity.`
       },
       {
-        id: 'remo_bilateral',
+        id: 'bilateral_row',
         name: 'Bilateral bent-over row',
         sets: 4,
         repsTarget: '8-10',
@@ -256,7 +256,7 @@ const ROUTINE = {
 <strong>Tip:</strong> Keep your core braced throughout. If your lower back fatigues before your lats, you're too horizontal or too heavy.`
       },
       {
-        id: 'fondos_sillas',
+        id: 'chair_dips',
         name: 'Chair dips',
         sets: 4,
         repsTarget: 'max',
@@ -269,7 +269,7 @@ const ROUTINE = {
 <strong>Tip:</strong> Feet elevated makes it harder. To go even heavier, place a dumbbell on your lap. Lean slightly forward to shift more work to chest.`
       },
       {
-        id: 'elevacion_piernas',
+        id: 'hanging_leg_raises',
         name: 'Hanging leg raises',
         sets: 3,
         repsTarget: '8-10',

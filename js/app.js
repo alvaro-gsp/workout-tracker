@@ -1,5 +1,8 @@
 const App = {
   init() {
+    Store.migrateUserIds();
+    Store.migrateExerciseIds();
+    Store.migrateBandWeightToSets();
     const pin = Store.getPin();
     if (pin && !Store.isAuthenticated()) {
       this._showLogin();
