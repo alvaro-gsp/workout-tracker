@@ -33,35 +33,53 @@ const History = {
         <div class="history-workout-name">${day.name} — ${day.subtitle}</div>`;
 
       if (log.exercises) {
+        const allExDefs = [];
+        day.exercises.forEach(e => {
+          allExDefs.push(e);
+          if (e.alternatives) allExDefs.push(...e.alternatives);
+        });
+
         log.exercises.forEach(ex => {
-          const exDef = day.exercises.find(e => e.id === ex.id);
+          const exDef = allExDefs.find(e => e.id === ex.id);
           if (!exDef) return;
+          const validSets = ex.sets?.filter(s => s.reps !== null || s.repsL !== null || s.skipped) || [];
+          if (!validSets.length) return;
 
-          const feelingEmojis = { good: '\u{1f4aa}', meh: '\u{1f4aa}', dying: '\u{1f925}' };
+          const unilateral = validSets.some(s => s.repsL != null || s.repsR != null);
 
-          const setsText = ex.sets
-            ?.filter(s => s.reps !== null || s.repsL !== null || s.skipped)
-            .map(s => {
-              if (s.skipped) return '✗';
-              let t;
-              if (s.repsL != null || s.repsR != null) {
-                t = `L${s.repsL || 0}/R${s.repsR || 0}`;
-              } else {
-                t = `${s.reps}`;
-              }
-              if (s.weight) t += `x${s.weight}kg`;
-              if (s.feeling) t += feelingEmojis[s.feeling] || '';
-              return t;
-            })
-            .join(' | ') || 'no data';
+          html += `<div class="history-exercise-block">
+            <div class="history-exercise-name">${exDef.name}</div>
+            <table class="history-table">
+              <thead><tr>
+                <th>Set</th>
+                <th>${unilateral ? 'Reps (L/R)' : 'Reps'}</th>
+                <th>Weight</th>
+                <th>Band</th>
+              </tr></thead>
+              <tbody>`;
 
-          html += `<div class="history-exercise">
-            <strong>${exDef.name}</strong>: ${setsText}
-          </div>`;
+          validSets.forEach((s, i) => {
+            if (s.skipped) {
+              html += `<tr class="history-skipped"><td>${i + 1}</td><td colspan="3">Skipped</td></tr>`;
+              return;
+            }
+            const reps = unilateral ? `${s.repsL || 0} / ${s.repsR || 0}` : `${s.reps || 0}`;
+            const weight = s.weight ? `${s.weight} kg` : '-';
+            const band = s.bandWeight ? `${s.bandWeight} kg` : '-';
+            html += `<tr>
+              <td>${i + 1}</td>
+              <td>${reps}</td>
+              <td>${weight}</td>
+              <td>${band}</td>
+            </tr>`;
+          });
+
+          html += `</tbody></table>`;
 
           if (ex.notes) {
-            html += `<div style="font-size:0.75rem;color:var(--text-dim);padding-left:8px;font-style:italic">${ex.notes}</div>`;
+            html += `<div class="history-notes">${ex.notes}</div>`;
           }
+          html += `</div>`;
         });
       }
 

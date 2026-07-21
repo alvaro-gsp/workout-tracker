@@ -1,6 +1,7 @@
 const Workout = {
   _restTimer: null,
   _restSeconds: -1,
+  _restFromExerciseRest: 0,
   _sessionTimer: null,
   _sessionSeconds: 0,
   _beepCtx: null,
@@ -84,14 +85,27 @@ const Workout = {
       });
     });
 
-    const firstBtn = container.querySelector('[data-day="dayA"]');
-    firstBtn.classList.add('active');
-    this._showSummary('dayA');
+    const session = this._restoreSession();
+    if (session) {
+      this._applySession(session);
+      const activeBtn = container.querySelector(`[data-day="${session.dayId}"]`);
+      if (activeBtn) {
+        container.querySelectorAll('.day-btn').forEach(b => b.classList.remove('active'));
+        activeBtn.classList.add('active');
+      }
+      this._showSummary(session.dayId);
+    } else {
+      const firstBtn = container.querySelector('[data-day="dayA"]');
+      firstBtn.classList.add('active');
+      this._showSummary('dayA');
+    }
   },
 
   _showSummary(dayId) {
     this._currentDayId = dayId;
-    this._currentLogId = null;
+    const session = this._restoreSession();
+    const hasRestoredSession = session && session.dayId === dayId;
+    if (!hasRestoredSession) this._currentLogId = null;
     const day = ROUTINE[dayId];
     const area = document.getElementById('workout-area');
     const total = day.exercises.length;
@@ -190,7 +204,7 @@ const Workout = {
   _getSetBuffer(exIdx, totalSets) {
     if (!this._setBuffer[exIdx]) {
       this._setBuffer[exIdx] = Array.from({ length: totalSets }, () => ({
-        reps: null, repsL: null, repsR: null, weight: null, feeling: null, skipped: false
+        reps: null, repsL: null, repsR: null, weight: null, skipped: false
       }));
     }
     return this._setBuffer[exIdx];
@@ -205,12 +219,10 @@ const Workout = {
     const buffer = this._getSetBuffer(exIdx, activeEx.sets);
 
     const weightInput = document.querySelector('[data-field="weight"]');
-    const skipBtn = document.querySelector('.skip-btn');
-    const faceBtn = document.querySelector('.face-btn.selected');
+    const bandInput = document.getElementById('band-weight');
 
     buffer[setIdx].weight = weightInput?.value ? parseFloat(weightInput.value) : null;
-    buffer[setIdx].skipped = skipBtn?.classList.contains('active') || false;
-    buffer[setIdx].feeling = faceBtn?.dataset.feeling || null;
+    buffer[setIdx].bandWeight = bandInput?.value ? parseFloat(bandInput.value) : null;
 
     if (isUnilateral) {
       const repsLInput = document.querySelector('[data-field="repsL"]');
@@ -296,14 +308,15 @@ const Workout = {
       <span class="toolbar-timer-outside" id="session-elapsed">0:00</span>
       </div>
 
-      <div class="exercise-fixed-header">
-        <div class="exercise-header-info">
+      <div class="exercise-split-header">
+        <div class="exercise-split-info">
           <div class="exercise-name">
             <span style="font-weight:700">${exIdx + 1}/${total}</span> ${activeEx.name}
           </div>
           <div class="exercise-target">${activeEx.sets}x${activeEx.repsTarget} | Rest: ${activeEx.rest}s</div>
           <div class="exercise-goal">${this._computeGoal(activeEx, lastEx, buffer, setIdx)}</div>
         </div>
+        <div class="exercise-split-timer" id="rest-display"></div>
       </div>
 
       <div class="info-popover hidden" id="info-popover">
@@ -323,30 +336,34 @@ const Workout = {
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
           </button>
         </div>
-        <span class="toolbar-timer-outside" id="rest-display"></span>
       </div>
 
       <div class="set-grid-v2${isUnilateral ? ' unilateral' : ''}">
         <div class="set-grid-header-row">
           ${isUnilateral ? '<div class="sg-h">Reps/L</div><div class="sg-h">Reps/R</div>' : `<div class="sg-h">${repsLabel}</div>`}
           <div class="sg-h">Weight</div>
-          <div class="sg-h">Status</div>
+          <div class="sg-h">Band</div>
         </div>
-        <div class="set-row-v2${setData.skipped ? ' skipped' : ''}">`;
+        <div class="set-row-v2">`;
 
     if (isUnilateral) {
-      html += `<input type="number" class="set-input set-input-small" data-field="repsL" placeholder="${prevRepsL}" inputmode="numeric" min="0" ${setData.skipped ? 'disabled' : ''} ${setData.repsL != null ? `value="${setData.repsL}"` : ''}>
-        <input type="number" class="set-input set-input-small" data-field="repsR" placeholder="${prevRepsR}" inputmode="numeric" min="0" ${setData.skipped ? 'disabled' : ''} ${setData.repsR != null ? `value="${setData.repsR}"` : ''}>`;
+      html += `<input type="number" class="set-input set-input-small" data-field="repsL" placeholder="${prevRepsL}" inputmode="numeric" min="0" ${setData.repsL != null ? `value="${setData.repsL}"` : ''}>
+        <input type="number" class="set-input set-input-small" data-field="repsR" placeholder="${prevRepsR}" inputmode="numeric" min="0" ${setData.repsR != null ? `value="${setData.repsR}"` : ''}>`;
     } else {
-      html += `<input type="number" class="set-input set-input-small" data-field="reps" placeholder="${prevReps}" inputmode="numeric" min="0" ${setData.skipped ? 'disabled' : ''} ${setData.reps != null ? `value="${setData.reps}"` : ''}>`;
+      html += `<input type="number" class="set-input set-input-small" data-field="reps" placeholder="${prevReps}" inputmode="numeric" min="0" ${setData.reps != null ? `value="${setData.reps}"` : ''}>`;
     }
 
-    html += `<input type="number" class="set-input set-input-small" data-field="weight" placeholder="${prevWeight}" inputmode="decimal" step="0.5" min="0" ${setData.skipped ? 'disabled' : ''} ${setData.weight != null ? `value="${setData.weight}"` : ''}>
-          <div class="status-strip">
-            <button class="strip-btn face-btn${setData.feeling === 'good' ? ' selected' : ''}" data-feeling="good" title="Nailed it" ${setData.skipped ? 'disabled' : ''}>&#128170;</button>
-            <button class="strip-btn face-btn${setData.feeling === 'dying' ? ' selected' : ''}" data-feeling="dying" title="Dying" ${setData.skipped ? 'disabled' : ''}>&#129397;</button>
-            <button class="strip-btn skip-btn${setData.skipped ? ' active' : ''}" title="Could not complete">&#128128;</button>
-          </div>
+    const prevBandSet = setIdx > 0 ? buffer[setIdx - 1] : null;
+    const prevBand = prevBandSet?.bandWeight ?? histSet?.bandWeight ?? '';
+    if (setData.bandWeight == null && !setData.skipped) {
+      if (prevBandSet?.bandWeight != null) {
+        setData.bandWeight = prevBandSet.bandWeight;
+      } else if (histSet?.bandWeight != null) {
+        setData.bandWeight = histSet.bandWeight;
+      }
+    }
+    html += `<input type="number" class="set-input set-input-small" data-field="weight" placeholder="${prevWeight}" inputmode="decimal" step="0.5" min="0" ${setData.weight != null ? `value="${setData.weight}"` : ''}>
+          <input type="number" class="set-input set-input-small" id="band-weight" data-field="bandWeight" placeholder="${prevBand}" inputmode="decimal" step="0.5" min="0" ${setData.bandWeight != null ? `value="${setData.bandWeight}"` : ''}>
         </div>
       </div>
 
@@ -367,41 +384,6 @@ const Workout = {
   _bindExerciseEvents() {
     const area = document.getElementById('workout-area');
     const dayId = this._currentDayId;
-
-    area.querySelectorAll('.face-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const parent = btn.closest('.status-strip') || btn.parentElement;
-        parent.querySelectorAll('.face-btn').forEach(b => b.classList.remove('selected'));
-        btn.classList.add('selected');
-        this._saveCurrentSetToBuffer();
-        this._autosave(dayId);
-      });
-    });
-
-    area.querySelector('.skip-btn')?.addEventListener('click', () => {
-      const skipBtn = area.querySelector('.skip-btn');
-      const row = skipBtn.closest('.set-row-v2');
-      const activating = !skipBtn.classList.contains('active');
-
-      if (activating) {
-        row.classList.add('skipped');
-        skipBtn.classList.add('active');
-        row.querySelectorAll('.set-input').forEach(inp => { inp.disabled = true; inp.value = ''; });
-        row.querySelectorAll('.face-btn').forEach(fb => { fb.classList.remove('selected'); fb.disabled = true; });
-      } else {
-        row.classList.remove('skipped');
-        skipBtn.classList.remove('active');
-        row.querySelectorAll('.set-input').forEach(inp => inp.disabled = false);
-        row.querySelectorAll('.face-btn').forEach(fb => fb.disabled = false);
-        const activeEx = this._activeExercises[this._currentExIdx] || day.exercises[this._currentExIdx];
-        const buf = this._getSetBuffer(this._currentExIdx, activeEx.sets);
-        for (let i = this._currentSetIdx; i < activeEx.sets; i++) {
-          buf[i].skipped = false;
-        }
-      }
-      this._saveCurrentSetToBuffer();
-      this._autosave(dayId);
-    });
 
     document.getElementById('swap-btn')?.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -452,6 +434,7 @@ const Workout = {
       });
     });
 
+
     document.getElementById('info-btn')?.addEventListener('click', () => {
       document.getElementById('info-popover').classList.toggle('hidden');
     });
@@ -467,23 +450,33 @@ const Workout = {
       const buffer = this._getSetBuffer(this._currentExIdx, activeEx.sets);
       const currentSet = buffer[this._currentSetIdx];
 
-      if (!currentSet.skipped && !this._hasReps(currentSet, activeEx)) {
-        this._flashValidation();
+      if (!this._hasReps(currentSet, activeEx)) {
+        const remaining = activeEx.sets - this._currentSetIdx;
+        UI.showModal(`
+          <h3 style="margin-bottom:12px">&#9888;&#65039; Warning</h3>
+          <p style="color:var(--text-dim);margin-bottom:16px">Skip the remaining ${remaining} set${remaining > 1 ? 's' : ''} and move to the next exercise?</p>
+          <div class="btn-group">
+            <button class="btn btn-secondary" onclick="UI.hideModal()">Cancel</button>
+            <button class="btn btn-danger" id="confirm-skip-sets">Continue</button>
+          </div>
+        `);
+        document.getElementById('confirm-skip-sets').addEventListener('click', () => {
+          UI.hideModal();
+          for (let i = this._currentSetIdx; i < activeEx.sets; i++) {
+            buffer[i].skipped = true;
+          }
+          this._saveCurrentExercise();
+          this._progressiveSave();
+          this._goToNextExercise();
+        });
         return;
       }
 
-      if (currentSet.skipped) {
-        for (let i = this._currentSetIdx; i < activeEx.sets; i++) {
-          buffer[i].skipped = true;
-        }
-        this._saveCurrentExercise();
-        this._progressiveSave();
-        this._goToNextExercise();
-      } else if (this._currentSetIdx < activeEx.sets - 1) {
+      if (this._currentSetIdx < activeEx.sets - 1) {
         this._saveCurrentExercise();
         this._progressiveSave();
         this._currentSetIdx++;
-        this._startRestTimer();
+        if (!this._restTimer) this._startRestTimer();
         this._renderExercise();
       } else {
         this._saveCurrentExercise();
@@ -513,10 +506,27 @@ const Workout = {
       const day = ROUTINE[this._currentDayId];
       const activeEx = this._activeExercises[this._currentExIdx] || day.exercises[this._currentExIdx];
       const buffer = this._getSetBuffer(this._currentExIdx, activeEx.sets);
-      const currentSet = buffer[this._currentSetIdx];
 
-      if (!currentSet.skipped && !this._hasReps(currentSet, activeEx)) {
-        this._flashValidation();
+      const unfilledFrom = buffer.findIndex((s, i) => i >= this._currentSetIdx && !s.skipped && !this._hasReps(s, activeEx));
+      if (unfilledFrom >= 0) {
+        const remaining = activeEx.sets - unfilledFrom;
+        UI.showModal(`
+          <h3 style="margin-bottom:12px">&#9888;&#65039; Warning</h3>
+          <p style="color:var(--text-dim);margin-bottom:16px">${remaining} set${remaining > 1 ? 's' : ''} without data. Skip them and move to the next exercise?</p>
+          <div class="btn-group">
+            <button class="btn btn-secondary" onclick="UI.hideModal()">Cancel</button>
+            <button class="btn btn-danger" id="confirm-skip-ex">Continue</button>
+          </div>
+        `);
+        document.getElementById('confirm-skip-ex').addEventListener('click', () => {
+          UI.hideModal();
+          for (let i = unfilledFrom; i < activeEx.sets; i++) {
+            if (!this._hasReps(buffer[i], activeEx)) buffer[i].skipped = true;
+          }
+          this._saveCurrentExercise();
+          this._progressiveSave();
+          this._goToNextExercise();
+        });
         return;
       }
 
@@ -546,6 +556,7 @@ const Workout = {
         UI.hideModal();
         this._saveCurrentSetToBuffer();
         this._saveCurrentExercise();
+        this._saveSession();
         this._stopRestTimer();
         this._stopSessionTimer();
         this._exitSessionMode();
@@ -571,9 +582,10 @@ const Workout = {
     const day = ROUTINE[this._currentDayId];
 
     if (this._currentExIdx < day.exercises.length - 1) {
+      const prevEx = this._activeExercises[this._currentExIdx] || day.exercises[this._currentExIdx];
       this._currentExIdx++;
       this._currentSetIdx = 0;
-      this._stopRestTimer();
+      this._startRestTimer(prevEx.rest);
       this._renderExercise();
     } else {
       this._finishWorkout();
@@ -586,6 +598,7 @@ const Workout = {
     this._exitSessionMode();
     this._saveCurrentExercise();
     this._progressiveSave();
+    this._clearSession();
 
     const totalMins = Math.floor(this._sessionSeconds / 60);
 
@@ -618,7 +631,7 @@ const Workout = {
 
   // Session timer - total elapsed
   _startSessionTimer() {
-    this._sessionSeconds = 0;
+    if (!this._sessionSeconds) this._sessionSeconds = 0;
     this._sessionTimer = setInterval(() => {
       this._sessionSeconds++;
       this._updateSessionTimerDisplay();
@@ -641,11 +654,11 @@ const Workout = {
   },
 
   // Rest timer - countdown, auto-starts on set change
-  _startRestTimer() {
+  _startRestTimer(restOverride) {
     this._stopRestTimer();
     const day = ROUTINE[this._currentDayId];
     const ex = this._activeExercises[this._currentExIdx] || day.exercises[this._currentExIdx];
-    this._restSeconds = ex.rest;
+    this._restSeconds = restOverride || ex.rest;
 
     this._restTimer = setInterval(() => {
       this._restSeconds--;
@@ -686,17 +699,17 @@ const Workout = {
 
       if (this._restSeconds === 0) {
         el.textContent = text;
-        el.className = 'toolbar-timer-outside rest-done';
+        el.className = 'exercise-split-timer rest-done';
       } else if (this._restSeconds <= 5) {
         el.textContent = text;
-        el.className = 'toolbar-timer-outside rest-warning';
+        el.className = 'exercise-split-timer rest-warning';
       } else {
         el.textContent = text;
-        el.className = 'toolbar-timer-outside rest-active';
+        el.className = 'exercise-split-timer rest-active';
       }
     } else {
       el.textContent = '';
-      el.className = 'toolbar-timer-outside';
+      el.className = 'exercise-split-timer';
     }
   },
 
@@ -712,7 +725,10 @@ const Workout = {
     document.querySelector('.day-selector')?.classList.remove('hidden-session');
   },
 
-  _autosave() {},
+  _autosave() {
+    this._saveCurrentExercise();
+    this._saveSession();
+  },
 
   _computeGoal(exercise, lastExData, currentBuffer, currentSetIdx) {
     if (!lastExData || !lastExData.sets || !lastExData.sets.length) {
@@ -780,7 +796,7 @@ const Workout = {
     let repsText;
     if (isMaxReps) {
       const totalReps = validSets.reduce((sum, s) => sum + (s.reps || 0), 0);
-      const perSet = validSets.map(s => s.reps || 0).join('/');
+      const perSet = validSets.map(s => s.reps || 0).join(' | ');
       repsText = `${perSet} = ${totalReps} &#8594; aim ${totalReps + 2}+`;
     } else if (isSeconds) {
       const times = validSets.map(s => s.reps || 0);
@@ -794,10 +810,10 @@ const Workout = {
         repsText = `${lrSets} — hold`;
       }
     } else {
-      const perSet = lastReps.join('/');
+      const perSet = lastReps.join(' | ');
       if (priority === 'reps') {
         const suggested = lastReps.map(r => (maxTarget && r >= maxTarget) ? r : r + 1);
-        repsText = `${perSet} &#8594; aim ${suggested.join('/')}`;
+        repsText = `${perSet} &#8594; aim ${suggested.join(' | ')}`;
       } else {
         repsText = `${perSet} — hold`;
       }
@@ -817,7 +833,18 @@ const Workout = {
     const r = priority === 'reps' ? 'goal-active' : 'goal-dim';
     const t = priority === 'technique' ? 'goal-active' : 'goal-dim';
 
+    const lastBand = validSets.reduce((max, s) => Math.max(max, s.bandWeight || 0), 0);
+    let bandText = '';
+    if (lastBand > 0) {
+      if (priority === 'weight') {
+        bandText = `<div class="goal-line goal-dim">&#9650; Band: ${lastBand}kg — hold or &#8594; +band</div>`;
+      } else {
+        bandText = `<div class="goal-line goal-dim">&#9650; Band: ${lastBand}kg — hold</div>`;
+      }
+    }
+
     return `<div class="goal-line ${w}">&#9650; Weight: ${weightText}</div>` +
+           bandText +
            `<div class="goal-line ${r}">&#9650; Reps: ${repsText}</div>` +
            `<div class="goal-line ${t}">&#9654; Technique: ${techText}</div>`;
   },
@@ -851,16 +878,61 @@ const Workout = {
       } else {
         this._currentLogId = null;
         this._progressiveSave();
+        return;
       }
     } else {
       const log = Store.saveWorkoutLog(dayId, data);
       this._currentLogId = log.id;
     }
+    this._saveSession();
   },
 
   _getLastLogForDay(dayId) {
     const logs = Store.getWorkoutLogs();
     const dayLogs = logs.filter(l => l.dayId === dayId && l.id !== this._currentLogId);
     return dayLogs.length ? dayLogs[dayLogs.length - 1] : null;
+  },
+
+  _saveSession() {
+    const session = {
+      dayId: this._currentDayId,
+      currentExIdx: this._currentExIdx,
+      currentSetIdx: this._currentSetIdx,
+      completedData: this._completedData,
+      activeExercises: this._activeExercises,
+      setBuffer: this._setBuffer,
+      notesBuffer: this._notesBuffer,
+      currentLogId: this._currentLogId,
+      sessionSeconds: this._sessionSeconds,
+      ts: Date.now()
+    };
+    Store.set('activeSession', session);
+  },
+
+  _restoreSession() {
+    const session = Store.get('activeSession', null);
+    if (!session) return null;
+    const age = Date.now() - (session.ts || 0);
+    if (age > 24 * 60 * 60 * 1000) {
+      this._clearSession();
+      return null;
+    }
+    return session;
+  },
+
+  _clearSession() {
+    Store.set('activeSession', null);
+  },
+
+  _applySession(session) {
+    this._currentDayId = session.dayId;
+    this._currentExIdx = session.currentExIdx;
+    this._currentSetIdx = session.currentSetIdx;
+    this._completedData = session.completedData || [];
+    this._activeExercises = session.activeExercises || {};
+    this._setBuffer = session.setBuffer || {};
+    this._notesBuffer = session.notesBuffer || {};
+    this._currentLogId = session.currentLogId;
+    this._sessionSeconds = session.sessionSeconds || 0;
   }
 };
