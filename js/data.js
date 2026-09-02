@@ -6,8 +6,8 @@ const ROUTINE = {
     exercises: [
       {
         id: 'bulgarian_split_squat',
-        name: 'Bulgarian split squat',
-        unilateral: true,
+        name: 'Bulgarian squat',
+
         sets: 4,
         repsTarget: '6-8 each leg',
         rest: 120,
@@ -35,8 +35,8 @@ const ROUTINE = {
       },
       {
         id: 'single_leg_rdl',
-        name: 'Single-leg Romanian deadlift',
-        unilateral: true,
+        name: 'Single-leg RDL',
+
         sets: 4,
         repsTarget: '8-10 each leg',
         rest: 90,
@@ -53,7 +53,7 @@ const ROUTINE = {
       {
         id: 'single_arm_row',
         name: 'Single-arm row',
-        unilateral: true,
+
         sets: 4,
         repsTarget: '8-10 each arm',
         rest: 90,
@@ -66,7 +66,7 @@ const ROUTINE = {
       },
       {
         id: 'face_pull',
-        name: 'Banded face pull',
+        name: 'Face pull',
         sets: 3,
         repsTarget: '15-20',
         rest: 60,
@@ -76,7 +76,23 @@ const ROUTINE = {
 <strong>End position:</strong> Hands should be beside your ears, thumbs pointing back. Hold 1s.<br>
 <strong>Return:</strong> Slow and controlled. Don't let the band snap back.<br>
 <strong>Common mistakes:</strong> Pulling too low (to chest), using biceps instead of rear delts, leaning back.<br>
-<strong>Tip:</strong> This is a rear delt and posture exercise — light weight, high reps, perfect form. Never ego-lift this.`
+<strong>Tip:</strong> This is a rear delt and posture exercise — light weight, high reps, perfect form. Never ego-lift this.`,
+        alternatives: [
+          {
+            id: 'reverse_fly',
+            name: 'Reverse fly',
+            sets: 3,
+            repsTarget: '15-20',
+            rest: 60,
+            material: '6-10 kg each hand or tube band',
+            execution: `<strong>With dumbbells:</strong> Hinge at hips to ~45-60°, flat back. Dumbbells hanging below chest, palms facing each other. Slight bend in elbows, locked in place.<br>
+<strong>With band:</strong> Anchor band at chest height or hold the middle with arms extended forward. Same movement pattern.<br>
+<strong>Raise:</strong> Raise both arms out to the sides in an arc, squeezing shoulder blades together at the top. Hold 1s.<br>
+<strong>Lower:</strong> Controlled 2s descent. Don't let gravity do the work.<br>
+<strong>Common mistakes:</strong> Using too much weight (this is an isolation exercise), straightening elbows mid-rep, swinging torso upright to cheat.<br>
+<strong>Tip:</strong> Think about leading with the elbows, not the hands. Light weight, feel the rear delts burn. Pinky finger slightly higher than thumb at the top.`
+          }
+        ]
       },
       {
         id: 'plank',
@@ -101,7 +117,7 @@ const ROUTINE = {
     exercises: [
       {
         id: 'goblet_squat',
-        name: 'Deep goblet squat',
+        name: 'Goblet squat',
         sets: 4,
         repsTarget: '10-12',
         rest: 90,
@@ -110,11 +126,41 @@ const ROUTINE = {
 <strong>Down:</strong> Sit between your legs, not back. Push knees out over toes. Go as deep as you can while keeping back straight — aim for below parallel.<br>
 <strong>Up:</strong> Drive through full foot, squeeze glutes at top. Don't lock knees aggressively.<br>
 <strong>Common mistakes:</strong> Heels lifting (work ankle mobility or elevate heels on plates), knees caving in, leaning forward too much, cutting depth.<br>
-<strong>Tip:</strong> Use the elbows — at the bottom they should be inside your knees, pushing them out. This is a mobility AND strength exercise.`
+<strong>Tip:</strong> Use the elbows — at the bottom they should be inside your knees, pushing them out. This is a mobility AND strength exercise.`,
+        alternatives: [
+          {
+            id: 'suitcase_squat',
+            name: 'Suitcase squat (DBs at sides)',
+            sets: 4,
+            repsTarget: '10-12',
+            rest: 90,
+            material: '15 kg each hand + loop band',
+            execution: `<strong>Setup:</strong> Dumbbells hanging at sides like suitcases. Feet shoulder-width, toes out 15-30°. Band under both feet optional.<br>
+<strong>Down:</strong> Sit back and down, keeping torso as upright as possible. Go to parallel or below. Knees track over toes.<br>
+<strong>Up:</strong> Drive through full foot, squeeze glutes at top.<br>
+<strong>Advantage:</strong> Allows double the load vs goblet (2 dumbbells). Grip may be the limiter — use straps if needed.<br>
+<strong>Common mistakes:</strong> Leaning forward excessively, dumbbells drifting forward, cutting depth.<br>
+<strong>Tip:</strong> Keep chest up and core braced. The dumbbells should travel in a straight vertical line.`
+          },
+          {
+            id: 'db_front_squat',
+            name: 'Dumbbell front squat (DBs on shoulders)',
+            sets: 4,
+            repsTarget: '10-12',
+            rest: 90,
+            material: '15 kg each hand + loop band',
+            execution: `<strong>Setup:</strong> Clean dumbbells to shoulders, resting one end on each shoulder, elbows up. Feet shoulder-width, toes out 15-30°.<br>
+<strong>Down:</strong> Sit between your legs, elbows stay high. Go to parallel or below. Knees track over toes.<br>
+<strong>Up:</strong> Drive through full foot, keep elbows up throughout. Squeeze glutes at top.<br>
+<strong>Advantage:</strong> Double the load vs goblet, more core engagement than suitcase, mimics barbell front squat.<br>
+<strong>Common mistakes:</strong> Elbows dropping (dumps the weight forward), leaning forward, cutting depth.<br>
+<strong>Tip:</strong> If elbows drop, reduce weight. The upright torso position is what makes this exercise valuable.`
+          }
+        ]
       },
       {
         id: 'floor_press',
-        name: 'Floor press',
+        name: 'Bench press',
         sets: 4,
         repsTarget: '8-12',
         rest: 90,
@@ -144,7 +190,7 @@ const ROUTINE = {
       {
         id: 'reverse_lunge',
         name: 'Reverse lunge',
-        unilateral: true,
+
         sets: 4,
         repsTarget: '8-10 each leg',
         rest: 90,
@@ -169,30 +215,31 @@ const ROUTINE = {
 <strong>Tip:</strong> The higher your feet, the more shoulder-dominant it becomes. Bench height targets upper chest well.`
       },
       {
-        id: 'shoulder_press',
-        name: 'Standing shoulder press',
+        id: 'lateral_raise',
+        name: 'Lateral raise',
         sets: 3,
-        repsTarget: '10-12',
-        rest: 90,
-        material: '10-15 kg each hand',
-        execution: `<strong>Setup:</strong> Standing, feet shoulder-width. Dumbbells at shoulder height, palms facing forward. Brace core tight.<br>
-<strong>Press:</strong> Push straight up, arms fully extended. Dumbbells should be slightly in front of your head at top, not behind.<br>
-<strong>Lower:</strong> Controlled back to shoulders. Don't bounce at the bottom.<br>
-<strong>Common mistakes:</strong> Arching lower back (use lighter weight or brace harder), pressing behind head, using leg drive (that's a push press).<br>
-<strong>Tip:</strong> Squeeze glutes to prevent back arching. If you can't do it without arching, sit down or reduce weight.`
+        repsTarget: '12-15',
+        rest: 60,
+        material: '6-10 kg each hand',
+        execution: `<strong>Setup:</strong> Standing, feet shoulder-width. Dumbbells at sides, palms facing in. Slight bend in elbows, locked in place.<br>
+<strong>Raise:</strong> Lift arms out to the sides until parallel to the floor. Lead with the elbows, not the hands. Hold 1s at the top.<br>
+<strong>Lower:</strong> Controlled 2s descent. Don't let the dumbbells crash down.<br>
+<strong>Common mistakes:</strong> Shrugging traps (keep shoulders down), swinging the weight up, going above shoulder height (unnecessary stress), using too much weight.<br>
+<strong>Tip:</strong> Think about pouring water from a pitcher — pinky slightly higher than thumb at the top. Light weight, strict form, feel the burn in the medial delt.`
       },
       {
-        id: 'banded_crunch',
-        name: 'Banded crunch',
+        id: 'weighted_crunch',
+        name: 'Weighted crunch',
         sets: 3,
         repsTarget: '15',
         rest: 60,
-        material: 'Tube band anchored high',
-        execution: `<strong>Setup:</strong> Kneel facing away from anchor point. Band behind neck, held with both hands at chest level.<br>
-<strong>Crunch:</strong> Curl torso down, driving ribs toward hips. Squeeze abs hard at bottom for 1s. The movement is in the spine, not the hips.<br>
-<strong>Return:</strong> Slow and controlled back to start. Don't let the band yank you back.<br>
-<strong>Common mistakes:</strong> Hinging at hips instead of crunching spine, pulling with arms, going too fast.<br>
-<strong>Tip:</strong> Think about making your torso as short as possible at the bottom. Exhale forcefully as you crunch.`
+        material: 'Dumbbell, kettlebell or band',
+        execution: `<strong>With dumbbell/kettlebell:</strong> Lie on your back, knees bent. Hold the weight against your chest with both hands or extended behind your head for more difficulty.<br>
+<strong>With band:</strong> Kneel facing away from anchor point. Band behind neck, held with both hands at chest level.<br>
+<strong>Crunch:</strong> Curl torso up (floor) or down (kneeling), driving ribs toward hips. Squeeze abs hard at the top for 1s. The movement is in the spine, not the hips.<br>
+<strong>Return:</strong> Slow and controlled back to start. Don't use momentum.<br>
+<strong>Common mistakes:</strong> Pulling with the neck, hinging at hips instead of crunching spine, going too fast.<br>
+<strong>Tip:</strong> Exhale forcefully as you crunch. Focus on shortening the distance between ribs and hips.`
       }
     ]
   },
@@ -203,7 +250,7 @@ const ROUTINE = {
     exercises: [
       {
         id: 'bilateral_rdl',
-        name: 'Bilateral Romanian deadlift',
+        name: 'RDL',
         sets: 4,
         repsTarget: '8-10',
         rest: 120,
@@ -231,7 +278,7 @@ const ROUTINE = {
       {
         id: 'static_lunge',
         name: 'Static lunge',
-        unilateral: true,
+
         sets: 3,
         repsTarget: '8-10 each leg',
         rest: 90,
@@ -240,11 +287,11 @@ const ROUTINE = {
 <strong>Down:</strong> Lower straight down until rear knee nearly touches floor. Front shin stays vertical.<br>
 <strong>Up:</strong> Drive through front heel. Squeeze glute at top.<br>
 <strong>Common mistakes:</strong> Stance too narrow (side to side), leaning forward, pushing off rear foot.<br>
-<strong>Tip:</strong> Lighter weight than Day 1 — focus on perfect control, full range of motion, and feeling each muscle work. Quality over quantity.`
+<strong>Tip:</strong> Keep torso upright and core braced throughout. If balance is an issue, narrow your stance slightly front-to-back.`
       },
       {
         id: 'bilateral_row',
-        name: 'Bilateral bent-over row',
+        name: 'Bent-over row',
         sets: 4,
         repsTarget: '8-10',
         rest: 90,
@@ -256,16 +303,17 @@ const ROUTINE = {
 <strong>Tip:</strong> Keep your core braced throughout. If your lower back fatigues before your lats, you're too horizontal or too heavy.`
       },
       {
-        id: 'chair_dips',
-        name: 'Chair dips',
+        id: 'dips',
+        name: 'Dips',
         sets: 4,
         repsTarget: 'max',
         rest: 90,
         material: 'Bodyweight',
-        execution: `<strong>Setup:</strong> Two stable chairs or surfaces. Hands on one, grip the edges. Legs extended or feet on the other chair.<br>
+        execution: `<strong>Setup:</strong> Parallel bars, dip station, or two stable chairs/surfaces. Arms locked out at the top, shoulders down.<br>
 <strong>Down:</strong> Lower until elbows reach ~90°. Keep elbows pointing back, not flaring out. 2s down.<br>
 <strong>Up:</strong> Press explosively to full lockout. Squeeze triceps at top.<br>
-<strong>Common mistakes:</strong> Going too deep (shoulder stress), flaring elbows wide, shrugging shoulders, unstable surface (check chairs before each set).<br>
+<strong>No parallels?</strong> Use two sturdy chairs — hands on the edges, feet on the floor or elevated on another chair.<br>
+<strong>Common mistakes:</strong> Going too deep (shoulder stress), flaring elbows wide, shrugging shoulders.<br>
 <strong>Tip:</strong> Feet elevated makes it harder. To go even heavier, place a dumbbell on your lap. Lean slightly forward to shift more work to chest.`
       },
       {

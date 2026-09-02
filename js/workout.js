@@ -204,7 +204,7 @@ const Workout = {
   _getSetBuffer(exIdx, totalSets) {
     if (!this._setBuffer[exIdx]) {
       this._setBuffer[exIdx] = Array.from({ length: totalSets }, () => ({
-        reps: null, repsL: null, repsR: null, weight: null, skipped: false
+        reps: null, weight: null, skipped: false
       }));
     }
     return this._setBuffer[exIdx];
@@ -215,7 +215,7 @@ const Workout = {
     const setIdx = this._currentSetIdx;
     const day = ROUTINE[this._currentDayId];
     const activeEx = this._activeExercises[exIdx] || day.exercises[exIdx];
-    const isUnilateral = activeEx.unilateral || false;
+
     const buffer = this._getSetBuffer(exIdx, activeEx.sets);
 
     const weightInput = document.querySelector('[data-field="weight"]');
@@ -224,16 +224,8 @@ const Workout = {
     buffer[setIdx].weight = weightInput?.value ? parseFloat(weightInput.value) : null;
     buffer[setIdx].bandWeight = bandInput?.value ? parseFloat(bandInput.value) : null;
 
-    if (isUnilateral) {
-      const repsLInput = document.querySelector('[data-field="repsL"]');
-      const repsRInput = document.querySelector('[data-field="repsR"]');
-      buffer[setIdx].repsL = repsLInput?.value ? parseFloat(repsLInput.value) : null;
-      buffer[setIdx].repsR = repsRInput?.value ? parseFloat(repsRInput.value) : null;
-      buffer[setIdx].reps = null;
-    } else {
-      const repsInput = document.querySelector('[data-field="reps"]');
-      buffer[setIdx].reps = repsInput?.value ? parseFloat(repsInput.value) : null;
-    }
+    const repsInput = document.querySelector('[data-field="reps"]');
+    buffer[setIdx].reps = repsInput?.value ? parseFloat(repsInput.value) : null;
 
     const notesInput = document.querySelector('textarea[data-ex="0"]');
     if (notesInput) {
@@ -257,7 +249,7 @@ const Workout = {
       .reduce((max, s) => Math.max(max, s.weight || 0), 0) || 0;
 
     const hasAlts = originalEx.alternatives && originalEx.alternatives.length > 0;
-    const isUnilateral = activeEx.unilateral || false;
+
     const isSeconds = activeEx.unit === 'seconds';
     const repsLabel = isSeconds ? 'Secs' : 'Reps';
 
@@ -275,8 +267,6 @@ const Workout = {
     }
 
     const prevReps = (bufPrev?.reps ?? histSet?.reps ?? '');
-    const prevRepsL = (bufPrev?.repsL ?? histSet?.repsL ?? '');
-    const prevRepsR = (bufPrev?.repsR ?? histSet?.repsR ?? '');
     const prevWeight = (bufPrev?.weight ?? histSet?.weight ?? '');
 
     const area = document.getElementById('workout-area');
@@ -338,20 +328,15 @@ const Workout = {
         </div>
       </div>
 
-      <div class="set-grid-v2${isUnilateral ? ' unilateral' : ''}">
+      <div class="set-grid-v2">
         <div class="set-grid-header-row">
-          ${isUnilateral ? '<div class="sg-h">Reps/L</div><div class="sg-h">Reps/R</div>' : `<div class="sg-h">${repsLabel}</div>`}
+          <div class="sg-h">${repsLabel}</div>
           <div class="sg-h">Weight</div>
           <div class="sg-h">Band</div>
         </div>
         <div class="set-row-v2">`;
 
-    if (isUnilateral) {
-      html += `<input type="number" class="set-input set-input-small" data-field="repsL" placeholder="${prevRepsL}" inputmode="numeric" min="0" ${setData.repsL != null ? `value="${setData.repsL}"` : ''}>
-        <input type="number" class="set-input set-input-small" data-field="repsR" placeholder="${prevRepsR}" inputmode="numeric" min="0" ${setData.repsR != null ? `value="${setData.repsR}"` : ''}>`;
-    } else {
-      html += `<input type="number" class="set-input set-input-small" data-field="reps" placeholder="${prevReps}" inputmode="numeric" min="0" ${setData.reps != null ? `value="${setData.reps}"` : ''}>`;
-    }
+    html += `<input type="number" class="set-input set-input-small" data-field="reps" placeholder="${prevReps}" inputmode="numeric" min="0" ${setData.reps != null ? `value="${setData.reps}"` : ''}>`;
 
     const prevBandSet = setIdx > 0 ? buffer[setIdx - 1] : null;
     const prevBand = prevBandSet?.bandWeight ?? histSet?.bandWeight ?? '';
@@ -362,7 +347,7 @@ const Workout = {
         setData.bandWeight = histSet.bandWeight;
       }
     }
-    html += `<input type="number" class="set-input set-input-small" data-field="weight" placeholder="${prevWeight}" inputmode="decimal" step="0.5" min="0" ${setData.weight != null ? `value="${setData.weight}"` : ''}>
+    html += `<input type="number" class="set-input set-input-small" data-field="weight" placeholder="${prevWeight}" inputmode="decimal" step="2" min="0" ${setData.weight != null ? `value="${setData.weight}"` : ''}>
           <input type="number" class="set-input set-input-small" id="band-weight" data-field="bandWeight" placeholder="${prevBand}" inputmode="decimal" step="0.5" min="0" ${setData.bandWeight != null ? `value="${setData.bandWeight}"` : ''}>
         </div>
       </div>
@@ -450,7 +435,7 @@ const Workout = {
       const buffer = this._getSetBuffer(this._currentExIdx, activeEx.sets);
       const currentSet = buffer[this._currentSetIdx];
 
-      if (!this._hasReps(currentSet, activeEx)) {
+      if (!this._hasReps(currentSet)) {
         const remaining = activeEx.sets - this._currentSetIdx;
         UI.showModal(`
           <h3 style="margin-bottom:12px">&#9888;&#65039; Warning</h3>
@@ -507,7 +492,7 @@ const Workout = {
       const activeEx = this._activeExercises[this._currentExIdx] || day.exercises[this._currentExIdx];
       const buffer = this._getSetBuffer(this._currentExIdx, activeEx.sets);
 
-      const unfilledFrom = buffer.findIndex((s, i) => i >= this._currentSetIdx && !s.skipped && !this._hasReps(s, activeEx));
+      const unfilledFrom = buffer.findIndex((s, i) => i >= this._currentSetIdx && !s.skipped && !this._hasReps(s));
       if (unfilledFrom >= 0) {
         const remaining = activeEx.sets - unfilledFrom;
         UI.showModal(`
@@ -521,7 +506,7 @@ const Workout = {
         document.getElementById('confirm-skip-ex').addEventListener('click', () => {
           UI.hideModal();
           for (let i = unfilledFrom; i < activeEx.sets; i++) {
-            if (!this._hasReps(buffer[i], activeEx)) buffer[i].skipped = true;
+            if (!this._hasReps(buffer[i])) buffer[i].skipped = true;
           }
           this._saveCurrentExercise();
           this._progressiveSave();
@@ -732,15 +717,13 @@ const Workout = {
 
   _computeGoal(exercise, lastExData, currentBuffer, currentSetIdx) {
     if (!lastExData || !lastExData.sets || !lastExData.sets.length) {
-      const filledSets = currentBuffer?.filter((s, i) => i < currentSetIdx && !s.skipped && (s.reps != null || s.repsL != null)) || [];
+      const filledSets = currentBuffer?.filter((s, i) => i < currentSetIdx && !s.skipped && s.reps != null) || [];
       if (!filledSets.length) {
         return '<div class="goal-line goal-first">&#9733; First session — log your baseline</div>';
       }
       const lastFilled = filledSets[filledSets.length - 1];
       const w = lastFilled.weight != null ? `${lastFilled.weight}kg` : 'No weight';
-      const r = lastFilled.repsL != null
-        ? `${lastFilled.repsL}L / ${lastFilled.repsR || 0}R`
-        : `${lastFilled.reps || 0} reps`;
+      const r = `${lastFilled.reps || 0} reps`;
       return `<div class="goal-line goal-active">&#9650; Repeat: ${w} &times; ${r}</div>` +
              '<div class="goal-line goal-dim">&#9654; Match or beat your previous set</div>';
     }
@@ -763,10 +746,7 @@ const Workout = {
     if (targetMatch) maxTarget = parseInt(targetMatch[2]);
     else if (targetMatch2) maxTarget = parseInt(targetMatch2[1]);
 
-    const lastReps = validSets.map(s => {
-      if (s.repsL != null || s.repsR != null) return Math.min(s.repsL || 0, s.repsR || 0);
-      return s.reps || 0;
-    });
+    const lastReps = validSets.map(s => s.reps || 0);
     const allAtMax = maxTarget && lastReps.every(r => r >= maxTarget);
 
     // Determine priority: 'weight', 'reps', or 'technique'
@@ -786,7 +766,7 @@ const Workout = {
     if (isMaxReps || isSeconds) {
       weightText = lastWeight > 0 ? `${lastWeight}kg — bodyweight+` : 'Bodyweight';
     } else if (priority === 'weight') {
-      const next = lastWeight + 2.5;
+      const next = lastWeight + 2;
       weightText = `${lastWeight}kg &#8594; try ${next}kg`;
     } else {
       weightText = lastWeight > 0 ? `${lastWeight}kg — hold` : 'No weight';
@@ -802,13 +782,6 @@ const Workout = {
       const times = validSets.map(s => s.reps || 0);
       const avg = Math.round(times.reduce((a, b) => a + b, 0) / times.length);
       repsText = `avg ${avg}s &#8594; aim ${avg + 5}s`;
-    } else if (exercise.unilateral) {
-      const lrSets = validSets.map(s => `${s.repsL || 0}/${s.repsR || 0}`).join(', ');
-      if (priority === 'reps') {
-        repsText = `${lrSets} &#8594; +1 per set`;
-      } else {
-        repsText = `${lrSets} — hold`;
-      }
     } else {
       const perSet = lastReps.join(' | ');
       if (priority === 'reps') {
@@ -849,8 +822,7 @@ const Workout = {
            `<div class="goal-line ${t}">&#9654; Technique: ${techText}</div>`;
   },
 
-  _hasReps(setData, exercise) {
-    if (exercise.unilateral) return setData.repsL != null || setData.repsR != null;
+  _hasReps(setData) {
     return setData.reps != null;
   },
 
@@ -865,7 +837,7 @@ const Workout = {
     const dayId = this._currentDayId;
     const data = { exercises: this._completedData.filter(Boolean) };
     const hasData = data.exercises.some(ex =>
-      ex.sets.some(s => s.reps !== null || s.repsL !== null || s.repsR !== null || s.skipped));
+      ex.sets.some(s => s.reps !== null || s.skipped));
     if (!hasData) return;
 
     if (this._currentLogId) {
