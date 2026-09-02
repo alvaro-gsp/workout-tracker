@@ -42,17 +42,15 @@ const History = {
         log.exercises.forEach(ex => {
           const exDef = allExDefs.find(e => e.id === ex.id);
           if (!exDef) return;
-          const validSets = ex.sets?.filter(s => s.reps !== null || s.repsL !== null || s.skipped) || [];
+          const validSets = ex.sets?.filter(s => s.reps !== null || s.skipped) || [];
           if (!validSets.length) return;
-
-          const unilateral = validSets.some(s => s.repsL != null || s.repsR != null);
 
           html += `<div class="history-exercise-block">
             <div class="history-exercise-name">${exDef.name}</div>
             <table class="history-table">
               <thead><tr>
                 <th>Set</th>
-                <th>${unilateral ? 'Reps (L/R)' : 'Reps'}</th>
+                <th>Reps</th>
                 <th>Weight</th>
                 <th>Band</th>
               </tr></thead>
@@ -63,7 +61,7 @@ const History = {
               html += `<tr class="history-skipped"><td>${i + 1}</td><td colspan="3">Skipped</td></tr>`;
               return;
             }
-            const reps = unilateral ? `${s.repsL || 0} / ${s.repsR || 0}` : `${s.reps || 0}`;
+            const reps = `${s.reps || 0}`;
             const weight = s.weight ? `${s.weight} kg` : '-';
             const band = s.bandWeight ? `${s.bandWeight} kg` : '-';
             html += `<tr>

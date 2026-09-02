@@ -214,11 +214,6 @@ nav#main-nav {
   padding: 6px 4px;
 }
 
-.set-grid-v2.unilateral .set-input-small {
-  flex: 1;
-  min-width: 0;
-}
-
 
 .notes-input {
   width: 100%;
@@ -402,8 +397,6 @@ nav#main-nav {
 /* Bilateral: Reps, Weight, Band */
 .set-grid-header-row .sg-h { flex: 1; }
 
-/* Unilateral: Reps/L, Reps/R, Weight, Band */
-.set-grid-v2.unilateral .set-grid-header-row .sg-h { flex: 1; }
 
 .set-row-v2 {
   display: flex;

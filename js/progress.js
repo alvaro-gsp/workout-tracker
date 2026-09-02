@@ -57,24 +57,18 @@ const Progress = {
         if (!exDef || !ex.sets) return;
 
         if (!map[ex.id]) {
-          map[ex.id] = { id: ex.id, name: exDef.name, unilateral: exDef.unilateral || false, entries: [] };
+          map[ex.id] = { id: ex.id, name: exDef.name, entries: [] };
         }
 
         const validSets = ex.sets.filter(s => !s.skipped);
         if (!validSets.length) return;
 
         const maxWeight = validSets.reduce((m, s) => Math.max(m, s.weight || 0), 0);
-        let totalReps;
-        if (exDef.unilateral) {
-          totalReps = validSets.reduce((a, s) => a + (s.repsL || 0) + (s.repsR || 0), 0);
-        } else {
-          totalReps = validSets.reduce((a, s) => a + (s.reps || 0), 0);
-        }
+        const totalReps = validSets.reduce((a, s) => a + (s.reps || 0), 0);
         const completedSets = validSets.length;
         const bandWeight = validSets.reduce((m, s) => Math.max(m, s.bandWeight || 0), 0);
         const volume = validSets.reduce((a, s) => {
-          const r = s.reps || ((s.repsL || 0) + (s.repsR || 0)) / 2;
-          return a + r * ((s.weight || 0) + (s.bandWeight || 0));
+          return a + (s.reps || 0) * ((s.weight || 0) + (s.bandWeight || 0));
         }, 0);
 
         map[ex.id].entries.push({
