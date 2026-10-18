@@ -530,6 +530,23 @@ nav#main-nav {
   min-width: 0;
 }
 
+.exercise-timers-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 100px;
+  border-left: 1px solid var(--border);
+  padding-left: 12px;
+}
+
+.exercise-timers-divider {
+  width: 100%;
+  height: 1px;
+  background: var(--border);
+  margin: 2px 0;
+}
+
 .exercise-split-timer {
   display: flex;
   align-items: center;
@@ -539,12 +556,14 @@ nav#main-nav {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: var(--text-dim);
-  border-left: 1px solid var(--border);
-  padding-left: 12px;
   user-select: none;
 }
 
 .exercise-split-timer:empty {
+  display: none;
+}
+
+.exercise-timers-divider:has(+ .exercise-split-timer:empty) {
   display: none;
 }
 
@@ -1026,30 +1045,7 @@ nav#main-nav {
 }
 
 .toolbar-timer-outside {
-  font-size: 0.8rem;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  color: var(--accent);
-  margin-left: auto;
-  user-select: none;
-  white-space: nowrap;
-}
-
-.toolbar-timer-outside:empty {
   display: none;
-}
-
-.toolbar-timer-outside.rest-active {
-  color: var(--success);
-}
-
-.toolbar-timer-outside.rest-warning {
-  color: var(--danger);
-  animation: pulse 0.5s infinite alternate;
-}
-
-.toolbar-timer-outside.rest-done {
-  color: var(--danger);
 }
 
 /* Set navigation toolbar */

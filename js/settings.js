@@ -140,6 +140,8 @@ const Settings = {
             Store.setUsers(users);
             Store.setCurrentUser(newId);
             Store.set('logs', data.logs);
+            Store.migrateExerciseIds();
+            Store.migrateBandWeightToSets();
             UI.hideModal();
             UI.showModal(`<div style="text-align:center">
               <h3 style="color:var(--success);margin-bottom:12px">User "${importName}" created</h3>
@@ -160,6 +162,8 @@ const Settings = {
             const final_logs = [...merged, ...brand_new].sort((a, b) =>
               new Date(a.timestamp || 0) - new Date(b.timestamp || 0));
             Store.set('logs', final_logs);
+            Store.migrateExerciseIds();
+            Store.migrateBandWeightToSets();
             UI.hideModal();
             UI.showModal(`<div style="text-align:center">
               <h3 style="color:var(--success);margin-bottom:12px">Merged into "${importName}"</h3>
@@ -178,6 +182,8 @@ const Settings = {
             const final_logs = [...merged, ...brand_new].sort((a, b) =>
               new Date(a.timestamp || 0) - new Date(b.timestamp || 0));
             Store.set('logs', final_logs);
+            Store.migrateExerciseIds();
+            Store.migrateBandWeightToSets();
             UI.hideModal();
             const currentName = users.find(u => u.id === currentUser)?.name || currentUser;
             UI.showModal(`<div style="text-align:center">
