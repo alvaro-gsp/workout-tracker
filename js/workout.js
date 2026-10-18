@@ -15,26 +15,30 @@ const Workout = {
   _notesBuffer: {},
   _currentLogId: null,
 
-  _beep() {
+  async _ensureAudioCtx() {
+    if (!this._beepCtx) this._beepCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (this._beepCtx.state === 'suspended') await this._beepCtx.resume();
+    return this._beepCtx;
+  },
+
+  async _beep() {
     try {
-      if (!this._beepCtx) this._beepCtx = new (window.AudioContext || window.webkitAudioContext)();
-      const ctx = this._beepCtx;
+      const ctx = await this._ensureAudioCtx();
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.connect(gain);
       gain.connect(ctx.destination);
       osc.frequency.value = 880;
       osc.type = 'square';
-      gain.gain.value = 0.5;
+      gain.gain.value = 0.7;
       osc.start();
       osc.stop(ctx.currentTime + 0.15);
     } catch {}
   },
 
-  _beepFinal() {
+  async _beepFinal() {
     try {
-      if (!this._beepCtx) this._beepCtx = new (window.AudioContext || window.webkitAudioContext)();
-      const ctx = this._beepCtx;
+      const ctx = await this._ensureAudioCtx();
       [0, 0.2, 0.4].forEach(delay => {
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
@@ -42,7 +46,7 @@ const Workout = {
         gain.connect(ctx.destination);
         osc.frequency.value = 1200;
         osc.type = 'square';
-        gain.gain.value = 0.5;
+        gain.gain.value = 0.7;
         osc.start(ctx.currentTime + delay);
         osc.stop(ctx.currentTime + delay + 0.15);
       });
@@ -56,6 +60,29 @@ const Workout = {
     this._stopRestTimer();
     this._stopSessionTimer();
     container.innerHTML = '';
+
+    if (!this._visibilityBound) {
+      this._visibilityBound = true;
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState !== 'visible') return;
+        if (this._sessionStartedAt && this._sessionTimer) {
+          this._sessionSeconds = Math.floor((Date.now() - this._sessionStartedAt) / 1000);
+          this._updateSessionTimerDisplay();
+        }
+        if (this._restEndsAt && this._restTimer) {
+          const remaining = Math.ceil((this._restEndsAt - Date.now()) / 1000);
+          this._restSeconds = Math.max(0, remaining);
+          this._updateRestDisplay();
+          if (remaining <= 0 && !this._restBeeped?.final) {
+            this._restBeeped = this._restBeeped || {};
+            this._restBeeped.final = true;
+            this._beepFinal();
+            if ('vibrate' in navigator) navigator.vibrate([200, 100, 200, 100, 200]);
+            this._stopRestTimer();
+          }
+        }
+      });
+    }
 
     container.innerHTML += `<div class="day-selector">
       ${Object.values(ROUTINE).map((day) => `
@@ -128,6 +155,7 @@ const Workout = {
     area.innerHTML = html;
 
     document.getElementById('start-workout').addEventListener('click', () => {
+      this._ensureAudioCtx();
       if (!hasSession) {
         this._completedData = [];
         this._currentExIdx = 0;
@@ -136,6 +164,8 @@ const Workout = {
         this._setBuffer = {};
         this._notesBuffer = {};
         this._currentLogId = null;
+        this._sessionSeconds = 0;
+        this._sessionStartedAt = null;
         this._enterSessionMode();
         this._showWarmup();
       } else {
@@ -241,8 +271,7 @@ const Workout = {
     const total = day.exercises.length;
     const originalEx = day.exercises[exIdx];
     const activeEx = this._activeExercises[exIdx] || originalEx;
-    const lastLog = this._getLastLogForDay(dayId);
-    const lastEx = lastLog?.exercises?.find(e => e.id === activeEx.id);
+    const lastEx = this._getLastExerciseData(activeEx.id);
 
     const lastMaxWeight = lastEx?.sets
       ?.filter(s => !s.skipped)
@@ -295,7 +324,6 @@ const Workout = {
         </button>
         ${hasAlts ? `<button class="toggle-btn toggle-swap" id="swap-btn" title="Alternatives">${this._svgSwap}</button>` : ''}
       </div>
-      <span class="toolbar-timer-outside" id="session-elapsed">0:00</span>
       </div>
 
       <div class="exercise-split-header">
@@ -306,7 +334,11 @@ const Workout = {
           <div class="exercise-target">${activeEx.sets}x${activeEx.repsTarget} | Rest: ${activeEx.rest}s</div>
           <div class="exercise-goal">${this._computeGoal(activeEx, lastEx, buffer, setIdx)}</div>
         </div>
-        <div class="exercise-split-timer" id="rest-display"></div>
+        <div class="exercise-timers-block">
+          <div class="exercise-split-timer" id="session-elapsed">0:00</div>
+          <div class="exercise-timers-divider"></div>
+          <div class="exercise-split-timer" id="rest-display"></div>
+        </div>
       </div>
 
       <div class="info-popover hidden" id="info-popover">
@@ -461,7 +493,7 @@ const Workout = {
         this._saveCurrentExercise();
         this._progressiveSave();
         this._currentSetIdx++;
-        if (!this._restTimer) this._startRestTimer();
+        this._startRestTimer();
         this._renderExercise();
       } else {
         this._saveCurrentExercise();
@@ -614,11 +646,13 @@ const Workout = {
     });
   },
 
-  // Session timer - total elapsed
+  // Session timer - total elapsed (timestamp-based)
   _startSessionTimer() {
-    if (!this._sessionSeconds) this._sessionSeconds = 0;
+    if (!this._sessionStartedAt) {
+      this._sessionStartedAt = Date.now() - (this._sessionSeconds || 0) * 1000;
+    }
     this._sessionTimer = setInterval(() => {
-      this._sessionSeconds++;
+      this._sessionSeconds = Math.floor((Date.now() - this._sessionStartedAt) / 1000);
       this._updateSessionTimerDisplay();
     }, 1000);
   },
@@ -638,31 +672,39 @@ const Workout = {
     el.textContent = `${mins}:${s.toString().padStart(2, '0')}`;
   },
 
-  // Rest timer - countdown, auto-starts on set change
+  // Rest timer - countdown (timestamp-based)
   _startRestTimer(restOverride) {
     this._stopRestTimer();
     const day = ROUTINE[this._currentDayId];
     const ex = this._activeExercises[this._currentExIdx] || day.exercises[this._currentExIdx];
-    this._restSeconds = restOverride || ex.rest;
+    const totalRest = restOverride || ex.rest;
+    this._restEndsAt = Date.now() + totalRest * 1000;
+    this._restBeeped = {};
 
     this._restTimer = setInterval(() => {
-      this._restSeconds--;
+      const remaining = Math.ceil((this._restEndsAt - Date.now()) / 1000);
+      this._restSeconds = Math.max(0, remaining);
       this._updateRestDisplay();
 
-      if (this._restSeconds <= 5 && this._restSeconds > 0) {
+      if (remaining <= 5 && remaining > 0 && !this._restBeeped[remaining]) {
+        this._restBeeped[remaining] = true;
         this._beep();
         if ('vibrate' in navigator) navigator.vibrate(100);
       }
 
-      if (this._restSeconds <= 0) {
-        this._beepFinal();
-        if ('vibrate' in navigator) navigator.vibrate([200, 100, 200, 100, 200]);
+      if (remaining <= 0) {
+        if (!this._restBeeped.final) {
+          this._restBeeped.final = true;
+          this._beepFinal();
+          if ('vibrate' in navigator) navigator.vibrate([200, 100, 200, 100, 200]);
+        }
         this._stopRestTimer();
         this._restSeconds = 0;
         this._updateRestDisplay();
       }
     }, 1000);
 
+    this._restSeconds = totalRest;
     this._updateRestDisplay();
   },
 
@@ -792,19 +834,8 @@ const Workout = {
       }
     }
 
-    // Build technique line
-    let techText;
-    if (priority === 'technique') {
-      techText = 'Same load, focus on form';
-    } else if (allDying) {
-      techText = 'Watch form under fatigue';
-    } else {
-      techText = 'Ok';
-    }
-
     const w = priority === 'weight' ? 'goal-active' : 'goal-dim';
     const r = priority === 'reps' ? 'goal-active' : 'goal-dim';
-    const t = priority === 'technique' ? 'goal-active' : 'goal-dim';
 
     const lastBand = validSets.reduce((max, s) => Math.max(max, s.bandWeight || 0), 0);
     let bandText = '';
@@ -816,10 +847,17 @@ const Workout = {
       }
     }
 
+    let techText = '';
+    if (priority === 'technique') {
+      techText = `<div class="goal-line goal-active">&#9654; Tempo: slow descent (3-4s), same load</div>`;
+    } else if (allDying) {
+      techText = `<div class="goal-line goal-dim">&#9654; Tempo: control the descent, don't rush</div>`;
+    }
+
     return `<div class="goal-line ${w}">&#9650; Weight: ${weightText}</div>` +
            bandText +
            `<div class="goal-line ${r}">&#9650; Reps: ${repsText}</div>` +
-           `<div class="goal-line ${t}">&#9654; Technique: ${techText}</div>`;
+           techText;
   },
 
   _hasReps(setData) {
@@ -865,6 +903,15 @@ const Workout = {
     return dayLogs.length ? dayLogs[dayLogs.length - 1] : null;
   },
 
+  _getLastExerciseData(exerciseId) {
+    const logs = Store.getWorkoutLogs().filter(l => l.id !== this._currentLogId);
+    for (let i = logs.length - 1; i >= 0; i--) {
+      const ex = logs[i].exercises?.find(e => e.id === exerciseId);
+      if (ex) return ex;
+    }
+    return null;
+  },
+
   _saveSession() {
     const session = {
       dayId: this._currentDayId,
@@ -875,7 +922,7 @@ const Workout = {
       setBuffer: this._setBuffer,
       notesBuffer: this._notesBuffer,
       currentLogId: this._currentLogId,
-      sessionSeconds: this._sessionSeconds,
+      sessionStartedAt: this._sessionStartedAt,
       ts: Date.now()
     };
     Store.set('activeSession', session);
@@ -905,6 +952,9 @@ const Workout = {
     this._setBuffer = session.setBuffer || {};
     this._notesBuffer = session.notesBuffer || {};
     this._currentLogId = session.currentLogId;
-    this._sessionSeconds = session.sessionSeconds || 0;
+    this._sessionStartedAt = session.sessionStartedAt || null;
+    this._sessionSeconds = this._sessionStartedAt
+      ? Math.floor((Date.now() - this._sessionStartedAt) / 1000)
+      : 0;
   }
 };
